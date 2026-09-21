@@ -4,11 +4,11 @@
     "author": "agent:deft-directive-setup",
     "description": "CLI scaffolding, init, and config twin of Ghostreader",
     "created": "2026-09-21T15:50:00Z",
-    "updated": "2026-09-21T16:22:34Z"
+    "updated": "2026-09-21T16:32:10Z"
   },
   "plan": {
     "title": "CLI Scaffold and Config",
-    "status": "running",
+    "status": "completed",
     "id": "scope.cli-scaffold-and-config",
     "narratives": {
       "Overview": "Create the ghostcopyeditor Python package as a Ghostreader twin: pyproject.toml, Typer CLI entrypoint with companion and analyze commands (stubs OK), init/config commands, pydantic-settings config.yaml, secrets/ layout, and basic tests. Traces: FR-CLI-1, FR-CLI-2, NFR-1.",
@@ -20,36 +20,60 @@
         "narrative": {
           "Overview": "pyproject.toml (Python >=3.12, typer, rich, pydantic-settings, pyyaml), ghostcopyeditor/ package, cli.py Typer app, __init__.py."
         },
-        "status": "pending",
+        "status": "completed",
         "type": "task",
-        "id": "item.1"
+        "id": "item.1",
+        "x-directive/evidence": {
+          "kind": "test",
+          "pointer": "tests/ghostcopyeditor/test_cli.py::TestHelp + commit 29ff225 (pyproject.toml, ghostcopyeditor package)",
+          "recorded_at": "2026-09-21T18:30:00Z",
+          "recorded_by": "agent:grok-meeseeks-pr1"
+        }
       },
       {
         "title": "Config and secrets",
         "narrative": {
           "Overview": "pydantic-settings model for config.yaml; secrets/llm.example; load pattern matching Ghostreader habits."
         },
-        "status": "pending",
+        "status": "completed",
         "type": "task",
-        "id": "item.2"
+        "id": "item.2",
+        "x-directive/evidence": {
+          "kind": "test",
+          "pointer": "tests/ghostcopyeditor/test_config.py + tests/ghostcopyeditor/test_llm.py + secrets/llm.example",
+          "recorded_at": "2026-09-21T18:30:00Z",
+          "recorded_by": "agent:grok-meeseeks-pr1"
+        }
       },
       {
         "title": "Init and config commands",
         "narrative": {
           "Overview": "init creates config + state dir; config views/edits settings."
         },
-        "status": "pending",
+        "status": "completed",
         "type": "task",
-        "id": "item.3"
+        "id": "item.3",
+        "x-directive/evidence": {
+          "kind": "test",
+          "pointer": "tests/ghostcopyeditor/test_cli.py::TestInit + TestConfigShow + TestConfigSet (34 passed, cov 95%)",
+          "recorded_at": "2026-09-21T18:30:00Z",
+          "recorded_by": "agent:grok-meeseeks-pr1"
+        }
       },
       {
         "title": "Companion and analyze stubs",
         "narrative": {
           "Overview": "Register companion and analyze commands that accept a path and --format terminal|json; stub body returns empty findings until later scopes."
         },
-        "status": "pending",
+        "status": "completed",
         "type": "task",
-        "id": "item.4"
+        "id": "item.4",
+        "x-directive/evidence": {
+          "kind": "test",
+          "pointer": "tests/ghostcopyeditor/test_cli.py::TestCompanionStub + TestAnalyzeStub (JSON exit 0, required keys)",
+          "recorded_at": "2026-09-21T18:30:00Z",
+          "recorded_by": "agent:grok-meeseeks-pr1"
+        }
       }
     ],
     "metadata": {
@@ -58,7 +82,13 @@
         "FR-CLI-1",
         "FR-CLI-2",
         "NFR-1"
-      ]
+      ],
+      "lifecycleWrite": {
+        "action": "complete",
+        "writtenAt": "2026-09-21T16:32:10Z"
+      },
+      "completedAt": "2026-09-21T16:32:10Z",
+      "completedSessionId": "host:grok:v1:MDFhMGM0YzctMjZkNi03MGExLTlhZDItMzI2NWNiOTVjNmFh"
     },
     "acceptance": {
       "commands": [],
@@ -97,6 +127,6 @@
       ],
       "ambiguity_attestation": "none_found"
     },
-    "updated": "2026-09-21T16:22:34Z"
+    "updated": "2026-09-21T16:32:10Z"
   }
 }
