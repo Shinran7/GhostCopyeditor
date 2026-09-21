@@ -100,7 +100,11 @@ async def run_chapter_pipeline(
             )
         )
     if llm_enabled and llm is not None:
-        del llm  # pragma: no cover - PR5
+        from ghostcopyeditor.llm_engine import run_llm_garbled
+
+        findings.extend(
+            await run_llm_garbled(chapter, findings, llm, cfg)
+        )
     findings = assign_finding_ids(findings, chapter.chapter_number)
     return dedupe_findings(findings)
 

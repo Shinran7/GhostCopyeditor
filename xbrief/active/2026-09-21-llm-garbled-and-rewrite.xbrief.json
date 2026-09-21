@@ -4,11 +4,11 @@
     "author": "agent:deft-directive-setup",
     "description": "LLM engine for garbled text and rewrite suggestions",
     "created": "2026-09-21T15:50:00Z",
-    "updated": "2026-09-21T15:48:27Z"
+    "updated": "2026-09-21T17:04:40Z"
   },
   "plan": {
     "title": "LLM Garbled Text and Rewrite Suggestions",
-    "status": "pending",
+    "status": "running",
     "id": "scope.llm-garbled-and-rewrite",
     "narratives": {
       "Overview": "Third engine: LLM detects garbled/broken sentences and proposes rewrite suggestions. Report-only (not applied by --apply in v1). Reuse Ghostreader-style LLM provider/secrets patterns. Traces: FR-LLM-1.",
@@ -79,6 +79,6 @@
       ],
       "ambiguity_attestation": "none_found"
     },
-    "updated": "2026-09-21T15:48:27Z"
+    "updated": "2026-09-21T17:04:40Z"
   }
 }

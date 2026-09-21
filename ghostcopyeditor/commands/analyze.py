@@ -16,7 +16,7 @@ from rich.panel import Panel
 from ghostcopyeditor.checkers.apply import apply_findings
 from ghostcopyeditor.config import GhostCopyeditorConfig
 from ghostcopyeditor.ingestion.discovery import discover_analyze
-from ghostcopyeditor.llm import load_secrets
+from ghostcopyeditor.llm import get_llm, load_secrets
 from ghostcopyeditor.models.report import ReportSummary
 from ghostcopyeditor.pipeline.runner import run_analyze_pipeline
 from ghostcopyeditor.typesafe import (
@@ -70,6 +70,22 @@ def run_analyze(
                 f"(floor {cfg.typesafe_confidence_floor})"
             )
 
+    llm = None
+    if llm_on:
+        llm = get_llm(model, manuscript_path=path)
+        llm_type = getattr(llm, "_llm_type", None)
+        requested = (model or cfg.model or "").strip().lower()
+        if llm_type == "stub" and requested != "stub":
+            _print_error(
+                "LLM engine is enabled but no usable chat-model API key was found.\n"
+                "  Set the provider key in secrets/llm.env, pass --model stub "
+                "(tests only), or pass --no-llm.",
+                output_format=output_format,
+            )
+            raise typer.Exit(code=1)
+        if verbose or output_format != "json":
+            _ERR.print(f"[cyan]LLM garbled engine: on[/cyan] (model={requested or 'config'})")
+
     if verbose or output_format == "json":
         nums = ", ".join(f"{ch.chapter_number:03d}" for ch in discovery.chapters)
         _ERR.print(
@@ -78,11 +94,12 @@ def run_analyze(
         )
 
     report = asyncio.run(
-        _run_with_optional_typesafe(
+        _run_engines(
             discovery.chapters,
             cfg=cfg,
             typesafe_on=typesafe_on,
             llm_on=llm_on,
+            llm=llm,
             manuscript_path=str(discovery.path),
             manuscript_name=discovery.manuscript_name,
             story_slug=discovery.story_slug,
@@ -101,12 +118,13 @@ def run_analyze(
     _emit(report, output_format=output_format, output_path=output_path)
 
 
-async def _run_with_optional_typesafe(
+async def _run_engines(
     chapters: list[Any],
     *,
     cfg: GhostCopyeditorConfig,
     typesafe_on: bool,
     llm_on: bool,
+    llm: Any | None,
     manuscript_path: str,
     manuscript_name: str,
     story_slug: str,
@@ -115,6 +133,7 @@ async def _run_with_optional_typesafe(
 ) -> Any:
     kwargs = {
         "cfg": cfg,
+        "llm": llm,
         "typesafe_enabled": typesafe_on,
         "llm_enabled": llm_on,
         "mode": "analyze",
