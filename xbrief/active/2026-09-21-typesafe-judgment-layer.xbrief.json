@@ -4,11 +4,11 @@
     "author": "agent:deft-directive-setup",
     "description": "TypeSafe judgment layer for copy-edit calls",
     "created": "2026-09-21T15:50:00Z",
-    "updated": "2026-09-21T15:48:31Z"
+    "updated": "2026-09-21T16:54:33Z"
   },
   "plan": {
     "title": "TypeSafe Judgment Layer",
-    "status": "pending",
+    "status": "running",
     "id": "scope.typesafe-judgment-layer",
     "narratives": {
       "Overview": "Second engine: TypeSafe SDK integration for judgment calls where deterministic rules are weak (ambiguous grammar, style preference, echo that needs context). Follow Ghostreader typesafe/ patterns: enable flag, API key via secrets, confidence floor. Traces: FR-TS-1, NFR-5.",
@@ -80,6 +80,6 @@
       ],
       "ambiguity_attestation": "none_found"
     },
-    "updated": "2026-09-21T15:48:31Z"
+    "updated": "2026-09-21T16:54:33Z"
   }
 }

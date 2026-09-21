@@ -55,3 +55,46 @@ class TestCompanionCommand:
         assert result.exit_code == 0
         assert "companion complete" in result.output.lower()
         assert out.is_file()
+
+    def test_companion_typesafe_missing_key_exits_1(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+        chapter = tmp_path / "chapter-003.md"
+        chapter.write_text("# Three\n\nHe walked.\n", encoding="utf-8")
+        result = runner.invoke(
+            app, ["companion", str(chapter), "--typesafe", "--format", "json"]
+        )
+        assert result.exit_code == 1
+        assert "TYPESAFE_API_KEY" in result.output
+
+    def test_companion_typesafe_mocked_client(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from types import SimpleNamespace
+
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("TYPESAFE_API_KEY", "sk-test")
+
+        class _FakeClient:
+            async def __aenter__(self) -> "_FakeClient":
+                return self
+
+            async def __aexit__(self, *_args: object) -> None:
+                return None
+
+            async def system_one(self, **_kwargs: object) -> SimpleNamespace:
+                return SimpleNamespace(choices={}, nouls={})
+
+        import typesafe_sdk
+
+        monkeypatch.setattr(typesafe_sdk, "AsyncTypeSafeClient", lambda: _FakeClient())
+        chapter = tmp_path / "chapter-004.md"
+        chapter.write_text("# Four\n\nHe walked.\n", encoding="utf-8")
+        result = runner.invoke(
+            app, ["companion", str(chapter), "--typesafe", "--format", "json"]
+        )
+        assert result.exit_code == 0
+        data = json.loads(result.stdout)
+        assert data["typesafe_enabled"] is True

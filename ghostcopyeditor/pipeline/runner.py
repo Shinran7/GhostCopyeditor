@@ -91,9 +91,14 @@ async def run_chapter_pipeline(
     """Run engines for one chapter, assign IDs, then dedupe once."""
     findings: list[Finding] = []
     findings.extend(run_deterministic_checkers(chapter, cfg))
-    # TypeSafe / LLM land in later PRs; keep hooks so callers stay stable.
     if typesafe_enabled and typesafe_client is not None:
-        del typesafe_client  # pragma: no cover - PR4
+        from ghostcopyeditor.typesafe import run_typesafe_judgments
+
+        findings.extend(
+            await run_typesafe_judgments(
+                chapter, findings, typesafe_client, cfg
+            )
+        )
     if llm_enabled and llm is not None:
         del llm  # pragma: no cover - PR5
     findings = assign_finding_ids(findings, chapter.chapter_number)

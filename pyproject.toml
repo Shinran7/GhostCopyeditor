@@ -12,6 +12,7 @@ dependencies = [
     "rich>=13.0",
     "pydantic>=2.0",
     "pyyaml>=6.0",
+    "typesafe-sdk>=0.7.0",
 ]
 
 [project.optional-dependencies]
@@ -19,6 +20,7 @@ dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",
     "pytest-mock>=3.14",
+    "pytest-asyncio>=0.23",
     "ruff>=0.5",
     "mypy>=1.10",
 ]
@@ -29,6 +31,7 @@ ghostcopyeditor = "ghostcopyeditor.cli:app"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
+asyncio_mode = "auto"
 addopts = "--import-mode=importlib --cov=ghostcopyeditor --cov-report=html --cov-report=term-missing"
 
 [tool.coverage.run]
@@ -54,4 +57,5 @@ dev = [
     "pytest-mock>=3.14",
     "ruff>=0.5",
     "mypy>=1.10",
+    "pytest-asyncio>=0.23",
 ]

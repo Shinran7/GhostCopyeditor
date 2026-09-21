@@ -6,6 +6,7 @@ import asyncio
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 import typer
 from rich import print as rprint
@@ -15,8 +16,15 @@ from rich.panel import Panel
 from ghostcopyeditor.checkers.apply import apply_findings
 from ghostcopyeditor.config import GhostCopyeditorConfig
 from ghostcopyeditor.ingestion.discovery import discover_companion
+from ghostcopyeditor.llm import load_secrets
 from ghostcopyeditor.models.report import CopyEditReport, ReportSummary
 from ghostcopyeditor.pipeline.runner import run_chapter_pipeline
+from ghostcopyeditor.typesafe import (
+    TypesafeConfigError,
+    ensure_typesafe_api_key,
+    ensure_typesafe_sdk,
+    resolve_typesafe_enabled,
+)
 
 _ERR = Console(stderr=True)
 
@@ -32,7 +40,7 @@ def run_companion(
     model: str | None,
     verbose: bool,
 ) -> None:
-    """Load one chapter, run deterministic pipeline, optionally apply."""
+    """Load one chapter, run pipeline, optionally apply deterministic fixes."""
     path = path.resolve()
     try:
         discovery = discover_companion(path)
@@ -44,9 +52,23 @@ def run_companion(
         raise typer.Exit(code=1) from exc
 
     cfg = GhostCopyeditorConfig.load(path)
-    typesafe_on = cfg.typesafe_enabled if typesafe is None else typesafe
+    typesafe_on = resolve_typesafe_enabled(typesafe, cfg)
     llm_on = bool(cfg.llm_enabled and not no_llm) or bool(model and not no_llm)
     do_apply = apply or cfg.apply_default
+
+    load_secrets()
+    if typesafe_on:
+        try:
+            ensure_typesafe_sdk()
+            ensure_typesafe_api_key()
+        except TypesafeConfigError as exc:
+            _print_error(str(exc), output_format=output_format)
+            raise typer.Exit(code=1) from exc
+        if verbose or output_format != "json":
+            _ERR.print(
+                f"[cyan]TypeSafe judgments: on[/cyan] "
+                f"(floor {cfg.typesafe_confidence_floor})"
+            )
 
     if verbose or output_format == "json":
         _ERR.print(
@@ -56,11 +78,11 @@ def run_companion(
         )
 
     findings = asyncio.run(
-        run_chapter_pipeline(
+        _run_with_optional_typesafe(
             discovery.chapter,
             cfg=cfg,
-            typesafe_enabled=typesafe_on,
-            llm_enabled=llm_on,
+            typesafe_on=typesafe_on,
+            llm_on=llm_on,
         )
     )
 
@@ -82,11 +104,34 @@ def run_companion(
         warnings=warnings,
         findings=findings,
     )
-    # Recompute summary so applied_count reflects metadata.applied.
-    report.summary = ReportSummary.from_findings(
-        findings, chapters_scanned=1
-    )
+    report.summary = ReportSummary.from_findings(findings, chapters_scanned=1)
     _emit(report, output_format=output_format, output_path=output_path)
+
+
+async def _run_with_optional_typesafe(
+    chapter: Any,
+    *,
+    cfg: GhostCopyeditorConfig,
+    typesafe_on: bool,
+    llm_on: bool,
+) -> list[Any]:
+    if typesafe_on:
+        from typesafe_sdk import AsyncTypeSafeClient
+
+        async with AsyncTypeSafeClient() as client:
+            return await run_chapter_pipeline(
+                chapter,
+                cfg=cfg,
+                typesafe_client=client,
+                typesafe_enabled=True,
+                llm_enabled=llm_on,
+            )
+    return await run_chapter_pipeline(
+        chapter,
+        cfg=cfg,
+        typesafe_enabled=False,
+        llm_enabled=llm_on,
+    )
 
 
 def _print_error(msg: str, *, output_format: str) -> None:
