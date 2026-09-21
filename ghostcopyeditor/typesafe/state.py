@@ -173,6 +173,8 @@ def build_typesafe_state(
     det_findings: list[Finding],
     *,
     max_chars: int = PROSE_MAX_CHARS,
+    lexicon_lines: list[str] | None = None,
+    cast_lines: list[str] | None = None,
 ) -> dict[str, Any]:
     """Build the capped System One state for one chapter."""
     candidates = sample_candidate_passages(chapter, det_findings)
@@ -196,6 +198,8 @@ def build_typesafe_state(
             }
             for f in det_findings[:40]
         ],
+        "book_lexicon": list(lexicon_lines or []),
+        "book_cast": list(cast_lines or []),
         "candidate_passages": [
             {"text": c["text"], "source": c.get("source", "")} for c in candidates
         ],

@@ -1,7 +1,8 @@
 """JSON export and on-disk persistence for CopyEditReport.
 
-Stdout JSON matches the Autonomicon-stable schema. Successful runs also
-persist under ``.ghostcopyeditor/<story-slug>/reports/``.
+Stdout JSON matches the Autonomicon-stable schema. Inside an Autonomicon
+story the file is ``stories/<slug>/reports/ghostcopyeditor-...``. Elsewhere
+it is ``.ghostcopyeditor/<story-slug>/reports/``.
 """
 
 from __future__ import annotations
@@ -13,7 +14,11 @@ from pathlib import Path
 from typing import Any, TextIO
 
 from ghostcopyeditor.models.report import CopyEditReport
-from ghostcopyeditor.paths import reports_dir, story_state_dir_for
+from ghostcopyeditor.paths import (
+    autonomicon_reports_dir,
+    reports_dir,
+    story_state_dir_for,
+)
 
 REQUIRED_TOP_LEVEL_KEYS = frozenset(
     {
@@ -26,6 +31,7 @@ REQUIRED_TOP_LEVEL_KEYS = frozenset(
         "chapter_number",
         "summary",
         "findings",
+        "may_look",
         "chapters",
         "warnings",
         "typesafe_enabled",
@@ -99,18 +105,26 @@ def report_persist_path(
 
     Companion: ``companion-chNNN.json`` (latest wins).
     Analyze: ``analyze-YYYYMMDD-HHMMSS.json`` (collision suffix if needed).
+    Under ``stories/<slug>/`` the names are prefixed ``ghostcopyeditor-`` and
+    the folder is that story's ``reports/`` directory.
     """
     ms_path = Path(manuscript_path or report.manuscript_path)
-    state = story_state_dir_for(ms_path, project_root=project_root)
-    out_dir = reports_dir(state)
+    story_reports = autonomicon_reports_dir(ms_path)
+    if story_reports is not None:
+        out_dir = story_reports
+        prefix = "ghostcopyeditor-"
+    else:
+        state = story_state_dir_for(ms_path, project_root=project_root)
+        out_dir = reports_dir(state)
+        prefix = ""
     out_dir.mkdir(parents=True, exist_ok=True)
 
     if report.mode == "companion":
         chapter = report.chapter_number if report.chapter_number is not None else 0
-        return out_dir / f"companion-ch{chapter:03d}.json"
+        return out_dir / f"{prefix}companion-ch{chapter:03d}.json"
 
     stamp = generated_at or datetime.now(timezone.utc)
-    base = f"analyze-{stamp.strftime('%Y%m%d-%H%M%S')}"
+    base = f"{prefix}analyze-{stamp.strftime('%Y%m%d-%H%M%S')}"
     candidate = out_dir / f"{base}.json"
     if not candidate.exists():
         return candidate
@@ -176,6 +190,14 @@ def validate_autonomicon_schema(payload: dict[str, Any]) -> list[str]:
     ids = [f.get("id") for f in findings if isinstance(f, dict)]
     if len(ids) != len(set(ids)):
         errors.append("findings[].id values must be unique")
+    for finding in findings:
+        if isinstance(finding, dict) and finding.get("rule_id") == "echo.local_repeat":
+            errors.append("echo notes must not sit in findings; use may_look")
+            break
+
+    may_look = payload.get("may_look")
+    if not isinstance(may_look, list):
+        errors.append("may_look must be a list")
 
     by_id = {f["id"]: f for f in findings if isinstance(f, dict) and "id" in f}
 

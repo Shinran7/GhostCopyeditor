@@ -14,7 +14,7 @@ NOUL_MID_BAND_LOW = 0.35
 def resolve_typesafe_enabled(
     cli_flag: bool | None, cfg: GhostCopyeditorConfig
 ) -> bool:
-    """CLI flag wins when not None; else config; else False."""
+    """CLI flag wins when not None; otherwise use the config value."""
     if cli_flag is not None:
         return bool(cli_flag)
     return bool(cfg.typesafe_enabled)

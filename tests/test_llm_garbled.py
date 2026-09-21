@@ -224,7 +224,10 @@ class TestRunLlmGarbled:
         assert Engine.DETERMINISTIC in engines
         assert Engine.LLM in engines
         assert any(f.id.startswith("llm-c001-") for f in findings)
-        assert all(not f.applyable for f in findings if f.engine == Engine.LLM)
+        llm_hits = [f for f in findings if f.engine == Engine.LLM]
+        assert llm_hits[0].suggestion == "Broken then."
+        assert llm_hits[0].applyable is False
+        assert llm_hits[0].replacement is None
 
 
 class TestApplySkipsLlm:
@@ -280,6 +283,7 @@ class TestCliLlmFlags:
                 "--model",
                 "stub",
                 "--no-llm",
+                "--no-typesafe",
                 "--format",
                 "json",
             ],
@@ -296,7 +300,15 @@ class TestCliLlmFlags:
         chapter.write_text("# Two\n\nHe walked.\n", encoding="utf-8")
         result = runner.invoke(
             app,
-            ["companion", str(chapter), "--model", "stub", "--format", "json"],
+            [
+                "companion",
+                str(chapter),
+                "--model",
+                "stub",
+                "--no-typesafe",
+                "--format",
+                "json",
+            ],
         )
         assert result.exit_code == 0
         data = json.loads(result.stdout)
@@ -311,6 +323,9 @@ class TestCliLlmFlags:
         monkeypatch.chdir(tmp_path)
         monkeypatch.delenv("GEMINI_API_KEY", raising=False)
         monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+        monkeypatch.setattr(
+            "ghostcopyeditor.paths.find_secrets_env", lambda start=None: None
+        )
         chapter = tmp_path / "chapter-003.md"
         chapter.write_text("# Three\n\nHe walked.\n", encoding="utf-8")
         result = runner.invoke(
@@ -320,6 +335,7 @@ class TestCliLlmFlags:
                 str(chapter),
                 "--model",
                 "gemini-3.8-flash",
+                "--no-typesafe",
                 "--format",
                 "json",
             ],
@@ -359,6 +375,7 @@ class TestCliLlmFlags:
                 "--model",
                 "stub",
                 "--apply",
+                "--no-typesafe",
                 "--format",
                 "json",
             ],

@@ -12,9 +12,16 @@ from rich.console import Console
 
 from ghostcopyeditor.checkers.apply import apply_findings
 from ghostcopyeditor.config import GhostCopyeditorConfig
+from ghostcopyeditor.canon import canon_file_findings, load_cast
 from ghostcopyeditor.ingestion.discovery import discover_companion
+from ghostcopyeditor.lexicon import lexicon_notice, load_lexicon
 from ghostcopyeditor.llm import get_llm, load_secrets
-from ghostcopyeditor.models.report import CopyEditReport, ReportSummary
+from ghostcopyeditor.models.finding import assign_finding_ids
+from ghostcopyeditor.models.report import (
+    CopyEditReport,
+    ReportSummary,
+    partition_action_list,
+)
 from ghostcopyeditor.pipeline.runner import run_chapter_pipeline
 from ghostcopyeditor.report import export_json, persist_report_json, render_report
 from ghostcopyeditor.typesafe import (
@@ -50,6 +57,8 @@ def run_companion(
         raise typer.Exit(code=1) from exc
 
     cfg = GhostCopyeditorConfig.load(path)
+    lexicon = load_lexicon(discovery.story_dir)
+    cast = load_cast(discovery.story_dir)
     typesafe_on = resolve_typesafe_enabled(typesafe, cfg)
     llm_on = bool(cfg.llm_enabled and not no_llm) or bool(model and not no_llm)
     do_apply = apply or cfg.apply_default
@@ -98,14 +107,23 @@ def run_companion(
             typesafe_on=typesafe_on,
             llm_on=llm_on,
             llm=llm,
+            lexicon=lexicon,
+            cast=cast,
         )
     )
 
     warnings = list(discovery.warnings)
+    notice = lexicon_notice(lexicon, discovery.story_dir)
+    if notice:
+        warnings.append(notice)
+    if cast:
+        warnings.append(f"Book cast: {len(cast)} characters.")
     if do_apply:
         _, apply_warnings = apply_findings([discovery.chapter], findings)
         warnings.extend(apply_warnings)
 
+    file_notes = assign_finding_ids(canon_file_findings(discovery.story_dir), 0)
+    action, may_look = partition_action_list(file_notes + findings)
     report = CopyEditReport.empty(
         mode="companion",
         manuscript_path=str(discovery.path),
@@ -117,9 +135,10 @@ def run_companion(
         llm_enabled=llm_on,
         apply=do_apply,
         warnings=warnings,
-        findings=findings,
+        findings=action,
+        may_look=may_look,
     )
-    report.summary = ReportSummary.from_findings(findings, chapters_scanned=1)
+    report.summary = ReportSummary.from_findings(action, chapters_scanned=1)
     _emit(report, output_format=output_format, output_path=output_path)
 
 
@@ -130,6 +149,8 @@ async def _run_engines(
     typesafe_on: bool,
     llm_on: bool,
     llm: Any | None,
+    lexicon: Any | None = None,
+    cast: tuple[Any, ...] = (),
 ) -> list[Any]:
     if typesafe_on:
         from typesafe_sdk import AsyncTypeSafeClient
@@ -142,6 +163,8 @@ async def _run_engines(
                 typesafe_client=client,
                 typesafe_enabled=True,
                 llm_enabled=llm_on,
+                lexicon=lexicon,
+                cast=cast,
             )
     return await run_chapter_pipeline(
         chapter,
@@ -149,6 +172,8 @@ async def _run_engines(
         llm=llm,
         typesafe_enabled=False,
         llm_enabled=llm_on,
+        lexicon=lexicon,
+        cast=cast,
     )
 
 

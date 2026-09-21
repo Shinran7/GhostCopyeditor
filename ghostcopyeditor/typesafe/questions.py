@@ -26,22 +26,24 @@ _CHOICE_INSTRUCTIONS: dict[str, str] = {
     "copy.grammar_ambiguity": (
         "Judge actionable grammar defects in candidate_passages that "
         "deterministic rules did not already cover. Prefer error or warning "
-        "only when the defect is clear; otherwise ok."
+        "only when the defect is clear; otherwise ok. Terms in book_lexicon, "
+        "including special spellings, are intentional. Do not flag them."
     ),
     "copy.style_consistency": (
         "Judge sudden register clash or tense wobble inside the capped prose. "
-        "Use concern only when the clash is clear; otherwise ok."
+        "Use concern only when the clash is clear; otherwise ok. Book_lexicon "
+        "spellings and coined words are intentional voice, not a clash."
     ),
 }
 
 _NOUL_INSTRUCTIONS: dict[str, str] = {
     "copy.echo_context": (
         "Probability that accidental word echo in the candidate passages "
-        "hurts the reading experience."
+        "hurts the reading experience. Repeating a book_lexicon term is not echo."
     ),
     "copy.wordiness_context": (
         "Probability that phrasing in the candidate passages is padded "
-        "given the surrounding prose."
+        "given the surrounding prose. A book_lexicon term is not padding."
     ),
 }
 

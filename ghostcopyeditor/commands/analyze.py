@@ -12,8 +12,11 @@ from rich.console import Console
 
 from ghostcopyeditor.checkers.apply import apply_findings
 from ghostcopyeditor.config import GhostCopyeditorConfig
+from ghostcopyeditor.canon import canon_file_findings, load_cast
 from ghostcopyeditor.ingestion.discovery import discover_analyze
+from ghostcopyeditor.lexicon import lexicon_notice, load_lexicon
 from ghostcopyeditor.llm import get_llm, load_secrets
+from ghostcopyeditor.models.finding import assign_finding_ids
 from ghostcopyeditor.models.report import ReportSummary
 from ghostcopyeditor.pipeline.runner import run_analyze_pipeline
 from ghostcopyeditor.report import export_json, persist_report_json, render_report
@@ -50,6 +53,14 @@ def run_analyze(
         raise typer.Exit(code=1) from exc
 
     cfg = GhostCopyeditorConfig.load(path)
+    lexicon = load_lexicon(discovery.story_dir)
+    cast = load_cast(discovery.story_dir)
+    warnings = list(discovery.warnings)
+    notice = lexicon_notice(lexicon, discovery.story_dir)
+    if notice:
+        warnings.append(notice)
+    if cast:
+        warnings.append(f"Book cast: {len(cast)} characters.")
     typesafe_on = resolve_typesafe_enabled(typesafe, cfg)
     llm_on = bool(cfg.llm_enabled and not no_llm) or bool(model and not no_llm)
     do_apply = apply or cfg.apply_default
@@ -102,9 +113,18 @@ def run_analyze(
             manuscript_name=discovery.manuscript_name,
             story_slug=discovery.story_slug,
             apply=do_apply,
-            warnings=list(discovery.warnings),
+            warnings=warnings,
+            lexicon=lexicon,
+            cast=cast,
         )
     )
+
+    file_notes = assign_finding_ids(canon_file_findings(discovery.story_dir), 0)
+    if file_notes:
+        report.findings = file_notes + list(report.findings)
+        report.summary = ReportSummary.from_findings(
+            report.findings, chapters_scanned=len(discovery.chapters)
+        )
 
     if do_apply:
         _, apply_warnings = apply_findings(discovery.chapters, report.findings)
@@ -128,6 +148,8 @@ async def _run_engines(
     story_slug: str,
     apply: bool,
     warnings: list[str],
+    lexicon: Any | None = None,
+    cast: tuple[Any, ...] = (),
 ) -> Any:
     kwargs = {
         "cfg": cfg,
@@ -141,6 +163,8 @@ async def _run_engines(
         "chapter_number": None,
         "apply": apply,
         "warnings": warnings,
+        "lexicon": lexicon,
+        "cast": cast,
     }
     if typesafe_on:
         from typesafe_sdk import AsyncTypeSafeClient

@@ -24,10 +24,10 @@ class GhostCopyeditorConfig(BaseModel):
     temperature: float | None = 0.2
     max_tokens: int | None = None
     format: Literal["terminal", "json"] = "terminal"
-    typesafe_enabled: bool = False
+    typesafe_enabled: bool = True
     typesafe_confidence_floor: float = 0.55
     typesafe_noul_positive_threshold: float = 0.65
-    llm_enabled: bool = False
+    llm_enabled: bool = True
     apply_default: bool = False
     echo_window_words: int = 40
     echo_min_repeats: int = 3
@@ -73,8 +73,8 @@ class GhostCopyeditorConfig(BaseModel):
             "# terminal | json (CLI --format wins)",
             f"format: {_fmt(self.format)}",
             "",
-            "# TypeSafe.ai judgments (default off). Needs TYPESAFE_API_KEY.",
-            "# Enable after secrets/llm.env, or pass --typesafe.",
+            "# TypeSafe.ai judgments (on by default). Needs TYPESAFE_API_KEY.",
+            "# Pass --no-typesafe to skip.",
             f"typesafe_enabled: {_fmt(self.typesafe_enabled)}",
             "",
             "# Below this Choice confidence, drop the TypeSafe finding.",
@@ -83,7 +83,7 @@ class GhostCopyeditorConfig(BaseModel):
             "# Noul at or above this → emit echo/wordiness finding",
             f"typesafe_noul_positive_threshold: {_fmt(self.typesafe_noul_positive_threshold)}",
             "",
-            "# LLM garbled/rewrite engine (default off until provider keys exist)",
+            "# LLM garbled/rewrite engine (on by default). Needs a provider key.",
             f"llm_enabled: {_fmt(self.llm_enabled)}",
             "",
             "# Deterministic apply default (CLI --apply wins when passed)",

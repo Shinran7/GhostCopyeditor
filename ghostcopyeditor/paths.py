@@ -148,6 +148,32 @@ def _resolve_project_root(
     return _skip_generic_parents(base)
 
 
+def story_dir_for(manuscript_path: Path) -> Path:
+    """Return the story folder that owns *manuscript_path*.
+
+    ``stories/shatterbound/chapters/chapter-001.md`` → ``stories/shatterbound``.
+    """
+    resolved = manuscript_path.resolve()
+    if resolved.is_file():
+        if _CHAPTER_FILE_RE.match(resolved.name):
+            return _skip_generic_parents(resolved.parent)
+        return resolved.parent
+    return _skip_generic_parents(resolved)
+
+
+def autonomicon_reports_dir(manuscript_path: Path) -> Path | None:
+    """Return ``stories/<slug>/reports`` when the chapter lives in that tree.
+
+    Autonomicon keeps per-story reports in that folder (Ghostreader companion
+    copies, usage files, reviews). Do not nest another ``.ghostcopyeditor/<slug>``
+    under the story.
+    """
+    story = story_dir_for(manuscript_path)
+    if story.parent.name.lower() != "stories":
+        return None
+    return story / "reports"
+
+
 def story_state_dir_for(
     manuscript_path: Path, project_root: Path | None = None
 ) -> Path:
@@ -197,9 +223,11 @@ def find_secrets_env(start: Path | None = None) -> Path | None:
 
 __all__ = [
     "CHAPTER_FILE_RE",
+    "autonomicon_reports_dir",
     "chapter_number_for",
     "config_path",
     "find_project_root",
+    "story_dir_for",
     "find_secrets_env",
     "manuscript_display_name",
     "package_project_root",

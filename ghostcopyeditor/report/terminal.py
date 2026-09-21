@@ -43,6 +43,7 @@ def render_report(
     if report.mode == "analyze" and len(report.chapters) > 1:
         _render_chapter_rollup(con, report)
     _render_findings(con, report, max_findings=max_findings)
+    _render_may_look(con, report)
     if report.warnings:
         _render_warnings(con, report.warnings)
     con.print()
@@ -61,7 +62,8 @@ def _render_overview(con: Console, report: CopyEditReport) -> None:
     table.add_column("label", style="bold")
     table.add_column("value")
 
-    table.add_row("Findings", str(summary.total_findings))
+    table.add_row("Copyedits", str(summary.total_findings))
+    table.add_row("You may look", str(len(report.may_look)))
     table.add_row(
         "By severity",
         _fmt_counts(summary.by_severity, order=[s.value for s in _SEVERITY_ORDER]),
@@ -134,6 +136,24 @@ def _render_findings(
         con.print(f"[dim]… and {hidden} more finding(s).[/dim]")
 
 
+def _render_may_look(con: Console, report: CopyEditReport) -> None:
+    notes = list(report.may_look)
+    if not notes:
+        return
+    lines: list[Text] = []
+    for finding in notes[:_DEFAULT_MAX_FINDINGS]:
+        word = str(finding.metadata.get("word") or "")
+        sentence = finding.location.excerpt or ""
+        line = Text()
+        line.append(f"{word}: ", style="bold")
+        line.append(sentence)
+        lines.append(line)
+    hidden = len(notes) - min(len(notes), _DEFAULT_MAX_FINDINGS)
+    if hidden > 0:
+        lines.append(Text(f"… and {hidden} more.", style="dim"))
+    con.print(Panel(Group(*lines), title="You may look", border_style="dim"))
+
+
 def _finding_line(finding: Finding, *, style: str) -> Text:
     loc = _format_location(finding)
     line = Text()
@@ -144,8 +164,10 @@ def _finding_line(finding: Finding, *, style: str) -> Text:
     if finding.rule_id:
         line.append(f" · {finding.rule_id}", style="dim")
     line.append(")", style="dim")
-    if finding.suggestion:
-        line.append(f"\n  → {finding.suggestion}", style="green")
+    if finding.applyable and finding.replacement:
+        line.append(f"\n  write: {finding.replacement}", style="green")
+    elif finding.suggestion:
+        line.append(f"\n  note: {finding.suggestion}", style="dim")
     if finding.id:
         line.append(f"\n  id={finding.id}", style="dim")
     return line

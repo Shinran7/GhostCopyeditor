@@ -25,7 +25,9 @@ class Span:
         return self.start <= start and end <= self.end
 
 
-_FRONTMATTER_RE = re.compile(r"\A---\r?\n.*?\r?\n---\r?\n", re.DOTALL)
+# Optional BOM. Chapter files from Autonomicon often start with one, and the
+# epigraph credit ("— Hestor Quill") lives inside that header.
+_FRONTMATTER_RE = re.compile(r"\A\ufeff?---\r?\n.*?\r?\n---\r?\n?", re.DOTALL)
 _FENCE_RE = re.compile(r"^```[^\n]*\n.*?^```[ \t]*\r?\n?", re.MULTILINE | re.DOTALL)
 _HEADING_RE = re.compile(r"^#{1,6}[ \t]+.*$", re.MULTILINE)
 _SCENE_BREAK_RE = re.compile(r"^---[ \t]*$", re.MULTILINE)

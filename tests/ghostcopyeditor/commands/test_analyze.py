@@ -29,7 +29,10 @@ class TestAnalyzeCommand:
         _write_chapter(chapters, 1, "# One\n")
         _write_chapter(chapters, 2, "# Two\n")
 
-        result = runner.invoke(app, ["analyze", str(chapters), "--format", "json"])
+        result = runner.invoke(
+            app,
+            ["analyze", str(chapters), "--format", "json", "--no-typesafe", "--no-llm"],
+        )
         assert result.exit_code == 0
         data = json.loads(result.stdout)
         assert data["mode"] == "analyze"
@@ -64,7 +67,17 @@ class TestAnalyzeCommand:
         _write_chapter(chapters, 1, "# One\n")
         out = tmp_path / "out" / "report.json"
         result = runner.invoke(
-            app, ["analyze", str(chapters), "--format", "json", "-o", str(out)]
+            app,
+            [
+                "analyze",
+                str(chapters),
+                "--format",
+                "json",
+                "-o",
+                str(out),
+                "--no-typesafe",
+                "--no-llm",
+            ],
         )
         assert result.exit_code == 0
         assert out.is_file()
@@ -76,6 +89,9 @@ class TestAnalyzeCommand:
     ) -> None:
         monkeypatch.chdir(tmp_path)
         monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+        monkeypatch.setattr(
+            "ghostcopyeditor.paths.find_secrets_env", lambda start=None: None
+        )
         chapters = tmp_path / "chapters"
         chapters.mkdir()
         _write_chapter(chapters, 1, "# One\n\nHe walked.\n")

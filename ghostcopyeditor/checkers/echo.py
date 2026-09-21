@@ -142,6 +142,27 @@ _STOP = frozenset(
 )
 
 
+def _sentence_span(content: str, start: int, end: int) -> tuple[int, int]:
+    """Return the sentence (or line) that contains the half-open span."""
+    left = -1
+    for index in range(start - 1, -1, -1):
+        if content[index] in ".!?\n":
+            left = index
+            break
+    right = len(content)
+    for index in range(end, len(content)):
+        if content[index] == "\n":
+            right = index
+            break
+        if content[index] in ".!?":
+            right = index + 1
+            break
+    sent_start = left + 1
+    while sent_start < right and content[sent_start] in " \t":
+        sent_start += 1
+    return sent_start, right
+
+
 class EchoChecker:
     """Flag the same content word repeating ≥ N times inside a sliding window."""
 
@@ -164,8 +185,8 @@ class EchoChecker:
             tokens.append((word, start, end))
 
         findings: list[Finding] = []
-        seen_spans: set[tuple[int, int]] = set()
-        # Sliding window over content-word tokens.
+        seen_words: set[str] = set()
+        # Sliding window over content-word tokens. One note per word cluster.
         ring: deque[tuple[str, int, int]] = deque()
         counts: dict[str, int] = {}
         for token in tokens:
@@ -177,30 +198,33 @@ class EchoChecker:
                 counts[old_word] -= 1
                 if counts[old_word] <= 0:
                     del counts[old_word]
-            if counts.get(word, 0) >= min_repeats:
-                key = (start, end)
-                if key in seen_spans:
-                    continue
-                seen_spans.add(key)
-                excerpt = content[start:end]
+                    seen_words.discard(old_word)
+            if counts.get(word, 0) >= min_repeats and word not in seen_words:
+                seen_words.add(word)
+                sent_start, sent_end = _sentence_span(content, start, end)
+                sentence = content[sent_start:sent_end].strip()
                 findings.append(
                     Finding(
                         id="",
                         category=Category.ECHO,
                         severity=Severity.SUGGESTION,
                         message=(
-                            f"Word '{excerpt}' repeats {counts[word]} times "
+                            f"Word '{word}' repeats {counts[word]} times "
                             f"within {window} content words."
                         ),
                         location=location_from_span(
-                            chapter, start, end, excerpt=excerpt
+                            chapter, sent_start, sent_end, excerpt=sentence
                         ),
                         engine=Engine.DETERMINISTIC,
                         suggestion=None,
                         rule_id="echo.local_repeat",
                         applyable=False,
                         replacement=None,
-                        metadata={"repeat_count": counts[word], "window": window},
+                        metadata={
+                            "word": word,
+                            "repeat_count": counts[word],
+                            "window": window,
+                        },
                     )
                 )
         return findings

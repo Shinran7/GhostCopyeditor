@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "generation": 1,
+  "contentVersion": "0.118.1",
+  "stampedAt": "2026-09-21T14:26:54Z",
+  "stampedBy": "directive-init",
+  "surfaces": {
+    "payload": "0.118.1",
+    "version": "v0.118.1",
+    "templates": "0.118.1",
+    "skills": "0.118.1",
+    "docs": "0.118.1"
+  }
+}

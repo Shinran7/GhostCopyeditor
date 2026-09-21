@@ -16,8 +16,8 @@ class TestGhostCopyeditorConfig:
         assert cfg.format == "terminal"
         assert cfg.temperature == 0.2
         assert cfg.max_tokens is None
-        assert cfg.typesafe_enabled is False
-        assert cfg.llm_enabled is False
+        assert cfg.typesafe_enabled is True
+        assert cfg.llm_enabled is True
         assert cfg.typesafe_confidence_floor == 0.55
         assert cfg.typesafe_noul_positive_threshold == 0.65
         assert cfg.apply_default is False
@@ -58,8 +58,8 @@ class TestGhostCopyeditorConfig:
         monkeypatch.chdir(tmp_path)
         cfg = GhostCopyeditorConfig.load(tmp_path)
         assert cfg.model == "gemini-3.8-flash"
-        assert cfg.typesafe_enabled is False
-        assert cfg.llm_enabled is False
+        assert cfg.typesafe_enabled is True
+        assert cfg.llm_enabled is True
 
     def test_load_from_child_dir(self, tmp_path: Path) -> None:
         cfg = GhostCopyeditorConfig(model="claude-sonnet-4-20250514")

@@ -82,10 +82,10 @@ class TestResolveToggle:
         cfg = GhostCopyeditorConfig(typesafe_enabled=True)
         assert resolve_typesafe_enabled(None, cfg) is True
 
-    def test_default_off(self) -> None:
+    def test_default_on(self) -> None:
         cfg = GhostCopyeditorConfig()
-        assert resolve_typesafe_enabled(None, cfg) is False
-        assert cfg.typesafe_enabled is False
+        assert resolve_typesafe_enabled(None, cfg) is True
+        assert cfg.typesafe_enabled is True
 
 
 class TestEnsureKey:

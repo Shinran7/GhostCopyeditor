@@ -7,12 +7,18 @@ from typing import Any
 from ghostcopyeditor.checkers import run_deterministic_checkers
 from ghostcopyeditor.config import GhostCopyeditorConfig
 from ghostcopyeditor.ingestion import Chapter
+from ghostcopyeditor.canon import CastMember, apply_cast, chapter_pronoun_findings
+from ghostcopyeditor.lexicon import Lexicon, drop_lexicon_conflicts
 from ghostcopyeditor.models.finding import (
     Engine,
     Finding,
     assign_finding_ids,
 )
-from ghostcopyeditor.models.report import ChapterResult, CopyEditReport
+from ghostcopyeditor.models.report import (
+    ChapterResult,
+    CopyEditReport,
+    partition_action_list,
+)
 
 
 def _normalize_message(message: str) -> str:
@@ -87,24 +93,48 @@ async def run_chapter_pipeline(
     typesafe_client: Any | None = None,
     typesafe_enabled: bool = False,
     llm_enabled: bool = False,
+    lexicon: Lexicon | None = None,
+    cast: tuple[CastMember, ...] = (),
 ) -> list[Finding]:
     """Run engines for one chapter, assign IDs, then dedupe once."""
+    book = lexicon or Lexicon()
     findings: list[Finding] = []
     findings.extend(run_deterministic_checkers(chapter, cfg))
+    findings = drop_lexicon_conflicts(findings, book)
     if typesafe_enabled and typesafe_client is not None:
         from ghostcopyeditor.typesafe import run_typesafe_judgments
 
         findings.extend(
             await run_typesafe_judgments(
-                chapter, findings, typesafe_client, cfg
+                chapter, findings, typesafe_client, cfg, lexicon=book, cast=cast
             )
         )
     if llm_enabled and llm is not None:
         from ghostcopyeditor.llm_engine import run_llm_garbled
 
         findings.extend(
-            await run_llm_garbled(chapter, findings, llm, cfg)
+            await run_llm_garbled(
+                chapter, findings, llm, cfg, lexicon=book, cast=cast
+            )
         )
+    from ghostcopyeditor.typesafe.garbled_review import (
+        drop_brute_echo,
+        review_garbled_findings,
+    )
+
+    if any(finding.rule_id == "llm.garbled" for finding in findings):
+        findings = await review_garbled_findings(
+            chapter,
+            findings,
+            typesafe_client if typesafe_enabled else None,
+            cfg,
+            lexicon=book,
+            cast=cast,
+        )
+    findings = drop_brute_echo(findings)
+    findings = apply_cast(findings, cast)
+    findings.extend(chapter_pronoun_findings(chapter, cast))
+    findings = drop_lexicon_conflicts(findings, book)
     findings = assign_finding_ids(findings, chapter.chapter_number)
     return dedupe_findings(findings)
 
@@ -124,6 +154,8 @@ async def run_analyze_pipeline(
     chapter_number: int | None = None,
     apply: bool = False,
     warnings: list[str] | None = None,
+    lexicon: Lexicon | None = None,
+    cast: tuple[CastMember, ...] = (),
 ) -> CopyEditReport:
     """Run the chapter pipeline on each chapter and build a combined report."""
     all_findings: list[Finding] = []
@@ -136,14 +168,17 @@ async def run_analyze_pipeline(
             typesafe_client=typesafe_client,
             typesafe_enabled=typesafe_enabled,
             llm_enabled=llm_enabled,
+            lexicon=lexicon,
+            cast=cast,
         )
+        action, _look = partition_action_list(fs)
         all_findings.extend(fs)
         chapter_results.append(
             ChapterResult(
                 chapter_number=chapter.chapter_number,
                 chapter_path=str(chapter.source_path),
                 title=chapter.title,
-                finding_ids=[f.id for f in fs],
+                finding_ids=[f.id for f in action],
             )
         )
 
@@ -152,6 +187,7 @@ async def run_analyze_pipeline(
     from ghostcopyeditor import __version__
     from ghostcopyeditor.models.report import ReportSummary
 
+    action, may_look = partition_action_list(all_findings)
     return CopyEditReport(
         ghostcopyeditor_version=__version__,
         mode=mode,  # type: ignore[arg-type]
@@ -161,9 +197,10 @@ async def run_analyze_pipeline(
         story_slug=story_slug,
         chapter_number=chapter_number,
         summary=ReportSummary.from_findings(
-            all_findings, chapters_scanned=len(chapters)
+            action, chapters_scanned=len(chapters)
         ),
-        findings=all_findings,
+        findings=action,
+        may_look=may_look,
         chapters=chapter_results,
         warnings=list(warnings or []),
         typesafe_enabled=typesafe_enabled,

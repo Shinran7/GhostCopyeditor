@@ -95,6 +95,9 @@ class TestGetLlm:
     ) -> None:
         monkeypatch.delenv("GEMINI_API_KEY", raising=False)
         monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+        monkeypatch.setattr(
+            "ghostcopyeditor.paths.find_secrets_env", lambda start=None: None
+        )
         llm = get_llm("gemini-3.8-flash")
         assert getattr(llm, "_llm_type") == "stub"
 
@@ -109,6 +112,9 @@ class TestGetLlm:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.delenv("FIREWORKS_API_KEY", raising=False)
+        monkeypatch.setattr(
+            "ghostcopyeditor.paths.find_secrets_env", lambda start=None: None
+        )
         llm = get_llm("accounts/fireworks/models/minimax-m3")
         assert getattr(llm, "_llm_type") == "stub"
 

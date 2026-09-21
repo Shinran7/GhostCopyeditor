@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from ghostcopyeditor.canon import CastMember, cast_lines as format_cast
 from ghostcopyeditor.config import GhostCopyeditorConfig
 from ghostcopyeditor.ingestion import Chapter
+from ghostcopyeditor.lexicon import Lexicon
 from ghostcopyeditor.models.finding import Finding
 from ghostcopyeditor.typesafe.adapters import response_to_findings
 from ghostcopyeditor.typesafe.client import ask
@@ -18,9 +20,17 @@ async def run_typesafe_judgments(
     det_findings: list[Finding],
     typesafe_client: Any,
     cfg: GhostCopyeditorConfig,
+    lexicon: Lexicon | None = None,
+    cast: tuple[CastMember, ...] = (),
 ) -> list[Finding]:
     """Ask System One and adapt answers into Finding records."""
-    state = build_typesafe_state(chapter, det_findings)
+    book = lexicon or Lexicon()
+    state = build_typesafe_state(
+        chapter,
+        det_findings,
+        lexicon_lines=book.prompt_lines(),
+        cast_lines=format_cast(cast),
+    )
     candidate_spans = list(state.pop("_candidate_spans", []) or [])
     response = await ask(
         typesafe_client,

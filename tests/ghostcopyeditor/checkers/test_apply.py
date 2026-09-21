@@ -153,7 +153,16 @@ class TestApplyCli:
         chapter = tmp_path / "chapter-003.md"
         chapter.write_text("# Three\n\nHe  walked.\n", encoding="utf-8")
         result = runner.invoke(
-            app, ["companion", str(chapter), "--apply", "--format", "json"]
+            app,
+            [
+                "companion",
+                str(chapter),
+                "--apply",
+                "--format",
+                "json",
+                "--no-typesafe",
+                "--no-llm",
+            ],
         )
         assert result.exit_code == 0
         text = chapter.read_text(encoding="utf-8")
@@ -177,7 +186,16 @@ class TestApplyCli:
         (chapters / "chapter-001.md").write_text("# One\n\nHe  walked.\n", encoding="utf-8")
         (chapters / "chapter-002.md").write_text("# Two\n\nShe  ran.\n", encoding="utf-8")
         result = runner.invoke(
-            app, ["analyze", str(chapters), "--apply", "--format", "json"]
+            app,
+            [
+                "analyze",
+                str(chapters),
+                "--apply",
+                "--format",
+                "json",
+                "--no-typesafe",
+                "--no-llm",
+            ],
         )
         assert result.exit_code == 0
         assert "He walked." in (chapters / "chapter-001.md").read_text(encoding="utf-8")

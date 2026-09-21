@@ -22,6 +22,7 @@ REQUIRED_JSON_KEYS = {
     "chapter_number",
     "summary",
     "findings",
+    "may_look",
     "chapters",
     "warnings",
     "typesafe_enabled",
@@ -53,8 +54,8 @@ class TestInit:
         assert (target / ".ghostcopyeditor").is_dir()
         text = (target / "config.yaml").read_text(encoding="utf-8")
         assert "model: gemini-3.8-flash" in text
-        assert "typesafe_enabled: false" in text
-        assert "llm_enabled: false" in text
+        assert "typesafe_enabled: true" in text
+        assert "llm_enabled: true" in text
         assert "secrets/llm.env" in result.output
 
     def test_init_duplicate_fails(
@@ -118,7 +119,15 @@ class TestCompanionStub:
         chapter.write_text("# Chapter 18\n\nHe walked.\n", encoding="utf-8")
 
         result = runner.invoke(
-            app, ["companion", str(chapter), "--format", "json"]
+            app,
+            [
+                "companion",
+                str(chapter),
+                "--format",
+                "json",
+                "--no-typesafe",
+                "--no-llm",
+            ],
         )
         assert result.exit_code == 0
         data = json.loads(result.stdout)
@@ -151,7 +160,8 @@ class TestAnalyzeStub:
         (chapters / "chapter-001.md").write_text("# One\n", encoding="utf-8")
 
         result = runner.invoke(
-            app, ["analyze", str(chapters), "--format", "json"]
+            app,
+            ["analyze", str(chapters), "--format", "json", "--no-typesafe", "--no-llm"],
         )
         assert result.exit_code == 0
         data = json.loads(result.stdout)
@@ -167,7 +177,9 @@ class TestAnalyzeStub:
         chapters = tmp_path / "chapters"
         chapters.mkdir()
         (chapters / "chapter-001.md").write_text("# One\n", encoding="utf-8")
-        result = runner.invoke(app, ["analyze", str(chapters)])
+        result = runner.invoke(
+            app, ["analyze", str(chapters), "--no-typesafe", "--no-llm"]
+        )
         assert result.exit_code == 0
         assert "overview" in result.output.lower() or "no findings" in result.output.lower()
 

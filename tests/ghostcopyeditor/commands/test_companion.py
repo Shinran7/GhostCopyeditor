@@ -22,7 +22,17 @@ class TestCompanionCommand:
         chapter.parent.mkdir(parents=True)
         chapter.write_text("# Chapter 18\n\nHe walked.\n", encoding="utf-8")
 
-        result = runner.invoke(app, ["companion", str(chapter), "--format", "json"])
+        result = runner.invoke(
+            app,
+            [
+                "companion",
+                str(chapter),
+                "--format",
+                "json",
+                "--no-typesafe",
+                "--no-llm",
+            ],
+        )
         assert result.exit_code == 0
         data = json.loads(result.stdout)
         assert data["mode"] == "companion"
@@ -52,7 +62,10 @@ class TestCompanionCommand:
         chapter = tmp_path / "chapter-002.md"
         chapter.write_text("# Two\n\nHe walked.\n", encoding="utf-8")
         out = tmp_path / "report.json"
-        result = runner.invoke(app, ["companion", str(chapter), "-o", str(out)])
+        result = runner.invoke(
+            app,
+            ["companion", str(chapter), "-o", str(out), "--no-typesafe", "--no-llm"],
+        )
         assert result.exit_code == 0
         assert "overview" in result.output.lower() or "findings" in result.output.lower()
         assert out.is_file()
@@ -65,6 +78,9 @@ class TestCompanionCommand:
     ) -> None:
         monkeypatch.chdir(tmp_path)
         monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+        monkeypatch.setattr(
+            "ghostcopyeditor.paths.find_secrets_env", lambda start=None: None
+        )
         chapter = tmp_path / "chapter-003.md"
         chapter.write_text("# Three\n\nHe walked.\n", encoding="utf-8")
         result = runner.invoke(

@@ -34,3 +34,23 @@ def test_empty_report_payload_has_required_keys(tmp_path: Path) -> None:
     path = persist_report_json(report, project_root=tmp_path, manuscript_path=chapter)
     assert path.name == "companion-ch001.json"
     assert json.loads(path.read_text(encoding="utf-8"))["mode"] == "companion"
+
+
+def test_autonomicon_story_report_stays_in_story_reports(tmp_path: Path) -> None:
+    story = tmp_path / "stories" / "shatterbound"
+    chapter = story / "chapters" / "chapter-001.md"
+    chapter.parent.mkdir(parents=True)
+    chapter.write_text("# One\n", encoding="utf-8")
+    report = CopyEditReport(
+        ghostcopyeditor_version="0.1.0",
+        mode="companion",
+        generated_at="2026-09-21T16:00:00+00:00",
+        manuscript_path=str(chapter),
+        manuscript_name="shatterbound · Chapter 1",
+        story_slug="shatterbound",
+        chapter_number=1,
+        summary=ReportSummary(chapters_scanned=1),
+    )
+    path = persist_report_json(report, manuscript_path=chapter)
+    assert path == story / "reports" / "ghostcopyeditor-companion-ch001.json"
+    assert not (story / ".ghostcopyeditor").exists()

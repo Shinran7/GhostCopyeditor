@@ -12,6 +12,9 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from ghostcopyeditor.config import GhostCopyeditorConfig
 from ghostcopyeditor.ingestion import Chapter
+from ghostcopyeditor.canon import CastMember, cast_lines
+from ghostcopyeditor.lexicon import Lexicon
+from ghostcopyeditor.repair import mark_program_replacement
 from ghostcopyeditor.llm import message_text
 from ghostcopyeditor.llm_engine.prompts import (
     GARBLED_SYSTEM_PROMPT,
@@ -97,7 +100,11 @@ def _anchor_location(chapter: Chapter, excerpt: str) -> tuple[Location, dict[str
 def items_to_findings(
     items: list[dict[str, Any]], chapter: Chapter
 ) -> list[Finding]:
-    """Convert parsed LLM items into non-applyable garbled Findings."""
+    """Convert parsed LLM items into garbled findings.
+
+    ``replacement`` and ``applyable`` are set only when the suggestion is
+    one unique repair of the excerpt. A paraphrase stays a human note.
+    """
     findings: list[Finding] = []
     for item in items:
         excerpt = str(item.get("excerpt") or "").strip()
@@ -128,6 +135,7 @@ def items_to_findings(
                 metadata=meta,
             )
         )
+        mark_program_replacement(findings[-1], chapter)
     return findings
 
 
@@ -136,13 +144,19 @@ async def run_llm_garbled(
     _prior_findings: list[Finding],
     llm: BaseChatModel,
     _cfg: GhostCopyeditorConfig,
+    lexicon: Lexicon | None = None,
+    cast: tuple[CastMember, ...] = (),
 ) -> list[Finding]:
     """Ask the LLM for garbled passages and return report-only findings."""
+    book = lexicon or Lexicon()
     messages = [
         SystemMessage(content=GARBLED_SYSTEM_PROMPT),
         HumanMessage(
             content=build_garbled_user_prompt(
-                chapter.content, chapter_number=chapter.chapter_number
+                chapter.content,
+                chapter_number=chapter.chapter_number,
+                lexicon_lines=book.prompt_lines(),
+                cast_lines=cast_lines(cast),
             )
         ),
     ]

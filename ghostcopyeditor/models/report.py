@@ -8,7 +8,7 @@ from typing import Any, Literal
 
 from ghostcopyeditor import __version__
 from ghostcopyeditor.ingestion import Chapter
-from ghostcopyeditor.models.finding import Finding
+from ghostcopyeditor.models.finding import Category, Finding
 
 
 @dataclass
@@ -79,6 +79,7 @@ class CopyEditReport:
     chapter_number: int | None
     summary: ReportSummary
     findings: list[Finding] = field(default_factory=list)
+    may_look: list[Finding] = field(default_factory=list)
     chapters: list[ChapterResult] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     typesafe_enabled: bool = False
@@ -97,6 +98,7 @@ class CopyEditReport:
             "chapter_number": self.chapter_number,
             "summary": self.summary.to_dict(),
             "findings": [f.to_dict() for f in self.findings],
+            "may_look": [f.to_dict() for f in self.may_look],
             "chapters": [c.to_dict() for c in self.chapters],
             "warnings": list(self.warnings),
             "typesafe_enabled": self.typesafe_enabled,
@@ -119,9 +121,11 @@ class CopyEditReport:
         apply: bool,
         warnings: list[str] | None = None,
         findings: list[Finding] | None = None,
+        may_look: list[Finding] | None = None,
     ) -> CopyEditReport:
         """Build a report with optional findings (empty until engines land)."""
         findings = findings or []
+        may_look = may_look or []
         chapter_results = [
             ChapterResult(
                 chapter_number=ch.chapter_number,
@@ -143,6 +147,7 @@ class CopyEditReport:
                 findings, chapters_scanned=len(chapters)
             ),
             findings=findings,
+            may_look=may_look,
             chapters=chapter_results,
             warnings=list(warnings or []),
             typesafe_enabled=typesafe_enabled,
@@ -151,8 +156,26 @@ class CopyEditReport:
         )
 
 
+def partition_action_list(
+    findings: list[Finding],
+) -> tuple[list[Finding], list[Finding]]:
+    """Split copyedits from echo notes.
+
+    Echo has no repair. It must not sit in the list a program revises.
+    """
+    action: list[Finding] = []
+    may_look: list[Finding] = []
+    for finding in findings:
+        if finding.category == Category.ECHO or finding.rule_id == "echo.local_repeat":
+            may_look.append(finding)
+        else:
+            action.append(finding)
+    return action, may_look
+
+
 __all__ = [
     "ChapterResult",
     "CopyEditReport",
     "ReportSummary",
+    "partition_action_list",
 ]

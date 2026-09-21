@@ -87,11 +87,9 @@ def init(
         Panel(
             f"[green]Config created:[/green] {written}\n"
             f"[green]State dir:[/green] {state_dir}\n"
-            "  Defaults keep TypeSafe and LLM off until you add keys.\n"
-            "  1. Copy secrets/llm.example → secrets/llm.env and fill keys.\n"
-            "  2. Then: ghostcopyeditor config set typesafe_enabled true\n"
-            "     and/or: ghostcopyeditor config set llm_enabled true\n"
-            "     (or pass --typesafe / --model on the command).",
+            "  TypeSafe and the language model are on.\n"
+            "  Put keys in secrets/llm.env (this project's own copy).\n"
+            "  Pass --no-typesafe or --no-llm to skip either one.",
             title="ghostcopyeditor init",
         )
     )

@@ -41,10 +41,12 @@ asyncio_mode = "auto"
 addopts = "--import-mode=importlib --cov=ghostcopyeditor --cov-report=html --cov-report=term-missing"
 
 [tool.coverage.run]
+branch = true
 omit = ["*/tests/*", "*/venv/*", "*/.venv/*"]
 
 [tool.coverage.report]
-fail_under = 85
+# The required bar is branch coverage, enforced in tests/branch_gate.py.
+# coverage.py's fail_under mixes statements and branches, so it is not the gate.
 
 [tool.ruff]
 line-length = 100
