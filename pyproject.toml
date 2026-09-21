@@ -29,7 +29,7 @@ ghostcopyeditor = "ghostcopyeditor.cli:app"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
-addopts = "--cov=ghostcopyeditor --cov-report=html --cov-report=term-missing"
+addopts = "--import-mode=importlib --cov=ghostcopyeditor --cov-report=html --cov-report=term-missing"
 
 [tool.coverage.run]
 omit = ["*/tests/*", "*/venv/*", "*/.venv/*"]

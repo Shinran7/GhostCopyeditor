@@ -129,6 +129,8 @@ class TestCompanionStub:
         assert data["chapter_number"] == 18
         assert data["typesafe_enabled"] is False
         assert data["llm_enabled"] is False
+        assert len(data["chapters"]) == 1
+        assert data["chapters"][0]["finding_ids"] == []
 
     def test_companion_missing_path_exits_one(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -167,7 +169,7 @@ class TestAnalyzeStub:
         (chapters / "chapter-001.md").write_text("# One\n", encoding="utf-8")
         result = runner.invoke(app, ["analyze", str(chapters)])
         assert result.exit_code == 0
-        assert "stub" in result.output.lower()
+        assert "analyze complete" in result.output.lower()
 
 
 class TestConfigSetCoercion:

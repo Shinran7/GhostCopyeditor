@@ -2,25 +2,15 @@
 
 from __future__ import annotations
 
-import json
-import sys
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Annotated, Any, Literal, Optional
+from typing import Annotated, Optional
 
 import typer
 from rich import print as rprint
-from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from ghostcopyeditor import __version__
 from ghostcopyeditor.config import GhostCopyeditorConfig
-from ghostcopyeditor.paths import (
-    chapter_number_for,
-    manuscript_display_name,
-    story_slug_for,
-)
 
 __all__ = ["app"]
 
@@ -39,8 +29,6 @@ app = typer.Typer(
 
 config_app = typer.Typer(help="View or edit configuration.")
 app.add_typer(config_app, name="config")
-
-err_console = Console(stderr=True)
 
 FormatOption = Annotated[
     Optional[str],
@@ -73,97 +61,6 @@ VerboseOption = Annotated[
     bool,
     typer.Option("--verbose", help="More progress on stderr."),
 ]
-
-def _empty_summary(*, chapters_scanned: int = 0) -> dict[str, Any]:
-    return {
-        "total_findings": 0,
-        "by_severity": {"error": 0, "warning": 0, "suggestion": 0, "info": 0},
-        "by_category": {},
-        "by_engine": {"deterministic": 0, "typesafe": 0, "llm": 0},
-        "applied_count": 0,
-        "chapters_scanned": chapters_scanned,
-    }
-
-
-def _stub_report(
-    *,
-    mode: Literal["companion", "analyze"],
-    path: Path,
-    typesafe_enabled: bool,
-    llm_enabled: bool,
-    apply: bool,
-) -> dict[str, Any]:
-    """Minimal Autonomicon-shaped report (empty findings until later PRs)."""
-    chapter_number = chapter_number_for(path) if mode == "companion" else None
-    return {
-        "ghostcopyeditor_version": __version__,
-        "mode": mode,
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-        "manuscript_path": str(path.resolve()),
-        "manuscript_name": manuscript_display_name(path),
-        "story_slug": story_slug_for(path),
-        "chapter_number": chapter_number,
-        "summary": _empty_summary(chapters_scanned=1 if path.exists() else 0),
-        "findings": [],
-        "chapters": [],
-        "warnings": [],
-        "typesafe_enabled": typesafe_enabled,
-        "llm_enabled": llm_enabled,
-        "apply": apply,
-    }
-
-
-def _emit_stub(
-    *,
-    mode: Literal["companion", "analyze"],
-    path: Path,
-    output_format: str,
-    output_path: Path | None,
-    typesafe: bool | None,
-    no_llm: bool,
-    apply: bool,
-    model: str | None,
-    verbose: bool,
-) -> None:
-    if not path.exists():
-        msg = f"Path not found: {path}"
-        if output_format == "json":
-            err_console.print(f"[red]Error:[/red] {msg}")
-        else:
-            rprint(f"[red]Error:[/red] {msg}")
-        raise typer.Exit(code=1)
-
-    cfg = GhostCopyeditorConfig.load(path)
-    typesafe_on = cfg.typesafe_enabled if typesafe is None else typesafe
-    llm_on = bool(cfg.llm_enabled and not no_llm) or bool(model and not no_llm)
-
-    if verbose or output_format == "json":
-        err_console.print(f"[cyan]ghostcopyeditor {mode} (stub):[/cyan] {path}")
-
-    report = _stub_report(
-        mode=mode,
-        path=path,
-        typesafe_enabled=typesafe_on,
-        llm_enabled=llm_on,
-        apply=apply,
-    )
-
-    if output_path is not None:
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-
-    if output_format == "json":
-        sys.stdout.write(json.dumps(report, indent=2) + "\n")
-        return
-
-    rprint(
-        Panel(
-            f"[green]{mode} stub complete[/green] — no engines wired yet.\n"
-            f"Path: {path}\n"
-            f"Findings: 0",
-            title="ghostcopyeditor",
-        )
-    )
 
 
 @app.command()
@@ -214,13 +111,14 @@ def companion(
     no_llm: NoLlmOption = False,
     verbose: VerboseOption = False,
 ) -> None:
-    """Copy-edit one chapter (Autonomicon hook). Stub until engines land."""
+    """Copy-edit one chapter (Autonomicon hook). Engines land in later PRs."""
+    from ghostcopyeditor.commands.companion import run_companion
+
     path = path.resolve()
     cfg = GhostCopyeditorConfig.load(path)
     output_format = format or cfg.format or "terminal"
-    _emit_stub(
-        mode="companion",
-        path=path,
+    run_companion(
+        path,
         output_format=output_format,
         output_path=output,
         typesafe=typesafe,
@@ -245,13 +143,14 @@ def analyze(
     no_llm: NoLlmOption = False,
     verbose: VerboseOption = False,
 ) -> None:
-    """Copy-edit a chapter folder (combined report). Stub until engines land."""
+    """Copy-edit a chapter folder (combined report). Engines land in later PRs."""
+    from ghostcopyeditor.commands.analyze import run_analyze
+
     path = path.resolve()
     cfg = GhostCopyeditorConfig.load(path)
     output_format = format or cfg.format or "terminal"
-    _emit_stub(
-        mode="analyze",
-        path=path,
+    run_analyze(
+        path,
         output_format=output_format,
         output_path=output,
         typesafe=typesafe,

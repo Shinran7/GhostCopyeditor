@@ -17,7 +17,8 @@ from pathlib import Path
 _GENERIC_DIR_NAMES = {"chapters", "src", "manuscript", "manuscripts", "content", "text", "docs"}
 
 # Matches chapter-001.md / chapter-18.md.
-_CHAPTER_FILE_RE = re.compile(r"^chapter-(\d+)\.md$", re.IGNORECASE)
+CHAPTER_FILE_RE = re.compile(r"^chapter-(\d+)\.md$", re.IGNORECASE)
+_CHAPTER_FILE_RE = CHAPTER_FILE_RE  # alias for internal callers
 
 
 def find_project_root(start: Path | None = None) -> Path | None:
@@ -193,6 +194,7 @@ def find_secrets_env(start: Path | None = None) -> Path | None:
 
 
 __all__ = [
+    "CHAPTER_FILE_RE",
     "chapter_number_for",
     "config_path",
     "find_project_root",
