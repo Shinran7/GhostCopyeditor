@@ -4,11 +4,11 @@
     "author": "agent:deft-directive-setup",
     "description": "Terminal and JSON reports for Autonomicon",
     "created": "2026-09-21T15:50:00Z",
-    "updated": "2026-09-21T15:48:30Z"
+    "updated": "2026-09-21T17:20:07Z"
   },
   "plan": {
     "title": "Reports Terminal and JSON",
-    "status": "pending",
+    "status": "completed",
     "id": "scope.reports-terminal-json",
     "narratives": {
       "Overview": "Wire companion and analyze to emit Rich terminal reports and machine JSON. Successful runs always exit 0 even when findings exist. Analyze rolls chapter findings into one combined report. Stabilize JSON schema for Autonomicon. Traces: FR-RPT-1, NFR-2, NFR-3.",
@@ -20,27 +20,45 @@
         "narrative": {
           "Overview": "Rich summary of findings by severity/category with locations."
         },
-        "status": "pending",
+        "status": "completed",
         "type": "task",
-        "id": "item.1"
+        "id": "item.1",
+        "x-directive/evidence": {
+          "kind": "test",
+          "pointer": "ghostcopyeditor/report/terminal.py; tests/test_report.py TestTerminalReport; tests/ghostcopyeditor/report/test_terminal.py; analyze rollup table; commit e77a928",
+          "recorded_at": "2026-09-21T20:00:00Z",
+          "recorded_by": "agent:grok-meeseeks-pr6"
+        }
       },
       {
         "title": "JSON reporter",
         "narrative": {
           "Overview": "Stable schema: manuscript path, mode, findings[], summary counts; Autonomicon-friendly."
         },
-        "status": "pending",
+        "status": "completed",
         "type": "task",
-        "id": "item.2"
+        "id": "item.2",
+        "x-directive/evidence": {
+          "kind": "test",
+          "pointer": "ghostcopyeditor/report/json_export.py; tests/fixtures/golden_companion_report.json; tests/test_report.py TestGoldenSchema/TestJsonExport; persist under .ghostcopyeditor/<story>/reports/; commit e77a928",
+          "recorded_at": "2026-09-21T20:00:00Z",
+          "recorded_by": "agent:grok-meeseeks-pr6"
+        }
       },
       {
         "title": "Exit policy and analyze rollup",
         "narrative": {
           "Overview": "Always exit 0 on successful completion; analyze aggregates chapter-by-chapter results into one report."
         },
-        "status": "pending",
+        "status": "completed",
         "type": "task",
-        "id": "item.3"
+        "id": "item.3",
+        "x-directive/evidence": {
+          "kind": "test",
+          "pointer": "tests/test_analyze_rollup.py unique IDs across chapters + exit 0 with findings + stderr progress; companion/analyze emit via report modules; 218 passed cov 96%; commit e77a928",
+          "recorded_at": "2026-09-21T20:00:00Z",
+          "recorded_by": "agent:grok-meeseeks-pr6"
+        }
       }
     ],
     "metadata": {
@@ -49,7 +67,13 @@
         "FR-RPT-1",
         "NFR-2",
         "NFR-3"
-      ]
+      ],
+      "lifecycleWrite": {
+        "action": "complete",
+        "writtenAt": "2026-09-21T17:20:07Z"
+      },
+      "completedAt": "2026-09-21T17:20:07Z",
+      "completedSessionId": "host:grok:v1:MDFhMGM0ZjYtNzBlMy03YjYxLTk0N2UtOGQzMDRhNjg3Mzk1"
     },
     "acceptance": {
       "commands": [],
@@ -81,6 +105,6 @@
       ],
       "ambiguity_attestation": "none_found"
     },
-    "updated": "2026-09-21T15:48:30Z"
+    "updated": "2026-09-21T17:20:07Z"
   }
 }
