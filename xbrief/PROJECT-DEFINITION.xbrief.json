@@ -24,7 +24,13 @@
     },
     "items": [],
     "x-directive/policy": {
-      "allowDirectCommitsToMaster": true
+      "allowDirectCommitsToMaster": true,
+      "hostHooks": {
+        "claude": false,
+        "cursor": true,
+        "grok": false,
+        "codex": true
+      }
     }
   }
 }

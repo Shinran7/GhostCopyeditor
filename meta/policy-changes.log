@@ -1,2 +1,4 @@
 # meta/policy-changes.log -- audit trail for policy.allowDirectCommitsToMaster transitions (#746)
 2026-09-21T14:37:13Z actor=agent:deft-directive-setup allowDirectCommitsToMaster=true previous=None changed=true
+2026-09-21T16:46:41Z actor=deft policy:disable-host-hooks plan.policy.hostHooks.grok=false previous={"claude":true,"cursor":true,"grok":true,"codex":true} changed=true
+2026-09-21T16:46:42Z actor=deft policy:disable-host-hooks plan.policy.hostHooks.claude=false previous={"claude":true,"cursor":true,"grok":false,"codex":true} changed=true
