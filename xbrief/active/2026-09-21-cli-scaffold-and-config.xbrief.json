@@ -1,0 +1,102 @@
+{
+  "xBRIEFInfo": {
+    "version": "0.8",
+    "author": "agent:deft-directive-setup",
+    "description": "CLI scaffolding, init, and config twin of Ghostreader",
+    "created": "2026-09-21T15:50:00Z",
+    "updated": "2026-09-21T16:22:34Z"
+  },
+  "plan": {
+    "title": "CLI Scaffold and Config",
+    "status": "running",
+    "id": "scope.cli-scaffold-and-config",
+    "narratives": {
+      "Overview": "Create the ghostcopyeditor Python package as a Ghostreader twin: pyproject.toml, Typer CLI entrypoint with companion and analyze commands (stubs OK), init/config commands, pydantic-settings config.yaml, secrets/ layout, and basic tests. Traces: FR-CLI-1, FR-CLI-2, NFR-1.",
+      "Acceptance": "ghostcopyeditor --help shows companion and analyze. init writes config.yaml and state dir. config view/set works. Package installs via uv/pip editable. Tests cover CLI help and config load."
+    },
+    "items": [
+      {
+        "title": "Project skeleton",
+        "narrative": {
+          "Overview": "pyproject.toml (Python >=3.12, typer, rich, pydantic-settings, pyyaml), ghostcopyeditor/ package, cli.py Typer app, __init__.py."
+        },
+        "status": "pending",
+        "type": "task",
+        "id": "item.1"
+      },
+      {
+        "title": "Config and secrets",
+        "narrative": {
+          "Overview": "pydantic-settings model for config.yaml; secrets/llm.example; load pattern matching Ghostreader habits."
+        },
+        "status": "pending",
+        "type": "task",
+        "id": "item.2"
+      },
+      {
+        "title": "Init and config commands",
+        "narrative": {
+          "Overview": "init creates config + state dir; config views/edits settings."
+        },
+        "status": "pending",
+        "type": "task",
+        "id": "item.3"
+      },
+      {
+        "title": "Companion and analyze stubs",
+        "narrative": {
+          "Overview": "Register companion and analyze commands that accept a path and --format terminal|json; stub body returns empty findings until later scopes."
+        },
+        "status": "pending",
+        "type": "task",
+        "id": "item.4"
+      }
+    ],
+    "metadata": {
+      "kind": "scope",
+      "traces": [
+        "FR-CLI-1",
+        "FR-CLI-2",
+        "NFR-1"
+      ]
+    },
+    "acceptance": {
+      "commands": [],
+      "none_stated": true,
+      "source_rung": "derived",
+      "derived_reason": "derived 4 independently testable clauses from the task statement before product edit (#3323)",
+      "clauses": [
+        {
+          "id": 1,
+          "text": "Project skeleton",
+          "artifact_path": null,
+          "ambiguous": false,
+          "provenance": "statement"
+        },
+        {
+          "id": 2,
+          "text": "Config and secrets",
+          "artifact_path": null,
+          "ambiguous": false,
+          "provenance": "statement"
+        },
+        {
+          "id": 3,
+          "text": "Init and config commands",
+          "artifact_path": null,
+          "ambiguous": false,
+          "provenance": "statement"
+        },
+        {
+          "id": 4,
+          "text": "Companion and analyze stubs",
+          "artifact_path": null,
+          "ambiguous": false,
+          "provenance": "statement"
+        }
+      ],
+      "ambiguity_attestation": "none_found"
+    },
+    "updated": "2026-09-21T16:22:34Z"
+  }
+}

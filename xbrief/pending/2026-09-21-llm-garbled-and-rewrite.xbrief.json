@@ -1,0 +1,84 @@
+{
+  "xBRIEFInfo": {
+    "version": "0.8",
+    "author": "agent:deft-directive-setup",
+    "description": "LLM engine for garbled text and rewrite suggestions",
+    "created": "2026-09-21T15:50:00Z",
+    "updated": "2026-09-21T15:48:27Z"
+  },
+  "plan": {
+    "title": "LLM Garbled Text and Rewrite Suggestions",
+    "status": "pending",
+    "id": "scope.llm-garbled-and-rewrite",
+    "narratives": {
+      "Overview": "Third engine: LLM detects garbled/broken sentences and proposes rewrite suggestions. Report-only (not applied by --apply in v1). Reuse Ghostreader-style LLM provider/secrets patterns. Traces: FR-LLM-1.",
+      "Acceptance": "Garbled passages produce findings with suggestions. Stub/mock LLM path works in tests. --apply does not write LLM suggestions. Provider keys load from secrets/."
+    },
+    "items": [
+      {
+        "title": "LLM client",
+        "narrative": {
+          "Overview": "Provider selection and secrets load matching sister apps; stub model for tests."
+        },
+        "status": "pending",
+        "type": "task",
+        "id": "item.1"
+      },
+      {
+        "title": "Garbled detection prompts",
+        "narrative": {
+          "Overview": "Prompts/schema for nonsense, dropped words, mid-edit wreckage; emit Finding with suggestion."
+        },
+        "status": "pending",
+        "type": "task",
+        "id": "item.2"
+      },
+      {
+        "title": "Pipeline placement",
+        "narrative": {
+          "Overview": "Run after TypeSafe; merge into finding list; keep suggestions report-only for apply."
+        },
+        "status": "pending",
+        "type": "task",
+        "id": "item.3"
+      }
+    ],
+    "metadata": {
+      "kind": "scope",
+      "traces": [
+        "FR-LLM-1"
+      ]
+    },
+    "acceptance": {
+      "commands": [],
+      "none_stated": true,
+      "source_rung": "derived",
+      "derived_reason": "derived 3 independently testable clauses from the task statement before product edit (#3323)",
+      "clauses": [
+        {
+          "id": 1,
+          "text": "LLM client",
+          "artifact_path": null,
+          "ambiguous": false,
+          "provenance": "statement"
+        },
+        {
+          "id": 2,
+          "text": "Garbled detection prompts",
+          "artifact_path": null,
+          "ambiguous": false,
+          "provenance": "statement"
+        },
+        {
+          "id": 3,
+          "text": "Pipeline placement",
+          "artifact_path": null,
+          "ambiguous": false,
+          "provenance": "statement"
+        }
+      ],
+      "ambiguity_attestation": "none_found"
+    },
+    "updated": "2026-09-21T15:48:27Z"
+  }
+}

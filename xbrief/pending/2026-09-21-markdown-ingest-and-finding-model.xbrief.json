@@ -1,0 +1,85 @@
+{
+  "xBRIEFInfo": {
+    "version": "0.8",
+    "author": "agent:deft-directive-setup",
+    "description": "Markdown ingest and shared finding model",
+    "created": "2026-09-21T15:50:00Z",
+    "updated": "2026-09-21T15:48:28Z"
+  },
+  "plan": {
+    "title": "Markdown Ingest and Finding Model",
+    "status": "pending",
+    "id": "scope.markdown-ingest-and-finding-model",
+    "narratives": {
+      "Overview": "Ingest single Markdown chapters and chapter folders. Define the Finding model used by every engine: location, severity, category, message, suggested fix, engine source. Companion uses one chapter; analyze discovers chapters and runs chapter-by-chapter. Traces: FR-INGEST-1, FR-FIND-1.",
+      "Acceptance": "Single .md and folder of .md chapters load with stable chapter order. Finding model serializes to JSON. Invalid paths return clear errors without crashing."
+    },
+    "items": [
+      {
+        "title": "Chapter discovery",
+        "narrative": {
+          "Overview": "Discover and order Markdown chapters from a file or folder (Ghostreader-style naming habits)."
+        },
+        "status": "pending",
+        "type": "task",
+        "id": "item.1"
+      },
+      {
+        "title": "Finding model",
+        "narrative": {
+          "Overview": "Typed Finding with location (chapter/path, line/span), severity, category (grammar|garbled|style|wordiness|echo), message, suggestion, engine."
+        },
+        "status": "pending",
+        "type": "task",
+        "id": "item.2"
+      },
+      {
+        "title": "Wire into companion/analyze",
+        "narrative": {
+          "Overview": "Commands load text through ingest and pass an empty finding list through to report stubs."
+        },
+        "status": "pending",
+        "type": "task",
+        "id": "item.3"
+      }
+    ],
+    "metadata": {
+      "kind": "scope",
+      "traces": [
+        "FR-INGEST-1",
+        "FR-FIND-1"
+      ]
+    },
+    "acceptance": {
+      "commands": [],
+      "none_stated": true,
+      "source_rung": "derived",
+      "derived_reason": "derived 3 independently testable clauses from the task statement before product edit (#3323)",
+      "clauses": [
+        {
+          "id": 1,
+          "text": "Chapter discovery",
+          "artifact_path": null,
+          "ambiguous": false,
+          "provenance": "statement"
+        },
+        {
+          "id": 2,
+          "text": "Finding model",
+          "artifact_path": null,
+          "ambiguous": false,
+          "provenance": "statement"
+        },
+        {
+          "id": 3,
+          "text": "Wire into companion/analyze",
+          "artifact_path": null,
+          "ambiguous": false,
+          "provenance": "statement"
+        }
+      ],
+      "ambiguity_attestation": "none_found"
+    },
+    "updated": "2026-09-21T15:48:28Z"
+  }
+}

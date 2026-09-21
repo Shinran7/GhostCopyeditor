@@ -1,0 +1,86 @@
+{
+  "xBRIEFInfo": {
+    "version": "0.8",
+    "author": "agent:deft-directive-setup",
+    "description": "Terminal and JSON reports for Autonomicon",
+    "created": "2026-09-21T15:50:00Z",
+    "updated": "2026-09-21T15:48:30Z"
+  },
+  "plan": {
+    "title": "Reports Terminal and JSON",
+    "status": "pending",
+    "id": "scope.reports-terminal-json",
+    "narratives": {
+      "Overview": "Wire companion and analyze to emit Rich terminal reports and machine JSON. Successful runs always exit 0 even when findings exist. Analyze rolls chapter findings into one combined report. Stabilize JSON schema for Autonomicon. Traces: FR-RPT-1, NFR-2, NFR-3.",
+      "Acceptance": "--format terminal and --format json work for companion and analyze. Exit code is 0 on success with findings. JSON schema documented and covered by tests. Combined novel report includes per-chapter finding groups."
+    },
+    "items": [
+      {
+        "title": "Terminal reporter",
+        "narrative": {
+          "Overview": "Rich summary of findings by severity/category with locations."
+        },
+        "status": "pending",
+        "type": "task",
+        "id": "item.1"
+      },
+      {
+        "title": "JSON reporter",
+        "narrative": {
+          "Overview": "Stable schema: manuscript path, mode, findings[], summary counts; Autonomicon-friendly."
+        },
+        "status": "pending",
+        "type": "task",
+        "id": "item.2"
+      },
+      {
+        "title": "Exit policy and analyze rollup",
+        "narrative": {
+          "Overview": "Always exit 0 on successful completion; analyze aggregates chapter-by-chapter results into one report."
+        },
+        "status": "pending",
+        "type": "task",
+        "id": "item.3"
+      }
+    ],
+    "metadata": {
+      "kind": "scope",
+      "traces": [
+        "FR-RPT-1",
+        "NFR-2",
+        "NFR-3"
+      ]
+    },
+    "acceptance": {
+      "commands": [],
+      "none_stated": true,
+      "source_rung": "derived",
+      "derived_reason": "derived 3 independently testable clauses from the task statement before product edit (#3323)",
+      "clauses": [
+        {
+          "id": 1,
+          "text": "Terminal reporter",
+          "artifact_path": null,
+          "ambiguous": false,
+          "provenance": "statement"
+        },
+        {
+          "id": 2,
+          "text": "JSON reporter",
+          "artifact_path": null,
+          "ambiguous": false,
+          "provenance": "statement"
+        },
+        {
+          "id": 3,
+          "text": "Exit policy and analyze rollup",
+          "artifact_path": null,
+          "ambiguous": false,
+          "provenance": "statement"
+        }
+      ],
+      "ambiguity_attestation": "none_found"
+    },
+    "updated": "2026-09-21T15:48:30Z"
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "xBRIEFInfo": {
+    "version": "0.8",
+    "author": "agent:deft-directive-setup",
+    "description": "Deterministic copy-edit checkers and optional apply",
+    "created": "2026-09-21T15:50:00Z",
+    "updated": "2026-09-21T15:48:25Z"
+  },
+  "plan": {
+    "title": "Deterministic Checkers and Apply",
+    "status": "pending",
+    "id": "scope.deterministic-checkers-and-apply",
+    "narratives": {
+      "Overview": "First engine in the pipeline: deterministic checkers for grammar/mechanics where rules are reliable, style consistency hooks, and light wordiness/echo heuristics safe enough for code. Optional --apply writes only safe deterministic fixes. Traces: FR-DET-1, FR-APPLY-1.",
+      "Acceptance": "Checkers emit Finding records with engine=deterministic. --apply changes only whitelisted safe fixes and is off by default. Fiction dialogue edge cases have tests documenting known limits."
+    },
+    "items": [
+      {
+        "title": "Checker interface",
+        "narrative": {
+          "Overview": "Pluggable checker protocol returning list[Finding]."
+        },
+        "status": "pending",
+        "type": "task",
+        "id": "item.1"
+      },
+      {
+        "title": "Core deterministic rules",
+        "narrative": {
+          "Overview": "Implement first-pass grammar/mechanics and style rules; light wordiness/echo heuristics that stay conservative."
+        },
+        "status": "pending",
+        "type": "task",
+        "id": "item.2"
+      },
+      {
+        "title": "Optional --apply",
+        "narrative": {
+          "Overview": "Apply only deterministic safe fixes; leave TypeSafe/LLM suggestions report-only."
+        },
+        "status": "pending",
+        "type": "task",
+        "id": "item.3"
+      }
+    ],
+    "metadata": {
+      "kind": "scope",
+      "traces": [
+        "FR-DET-1",
+        "FR-APPLY-1"
+      ]
+    },
+    "acceptance": {
+      "commands": [],
+      "none_stated": true,
+      "source_rung": "derived",
+      "derived_reason": "derived 3 independently testable clauses from the task statement before product edit (#3323)",
+      "clauses": [
+        {
+          "id": 1,
+          "text": "Checker interface",
+          "artifact_path": null,
+          "ambiguous": false,
+          "provenance": "statement"
+        },
+        {
+          "id": 2,
+          "text": "Core deterministic rules",
+          "artifact_path": null,
+          "ambiguous": false,
+          "provenance": "statement"
+        },
+        {
+          "id": 3,
+          "text": "Optional --apply",
+          "artifact_path": null,
+          "ambiguous": false,
+          "provenance": "statement"
+        }
+      ],
+      "ambiguity_attestation": "none_found"
+    },
+    "updated": "2026-09-21T15:48:25Z"
+  }
+}
