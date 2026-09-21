@@ -78,14 +78,23 @@ def parse_garbled_response(raw: str) -> list[dict[str, Any]]:
     return [item for item in data if isinstance(item, dict)]
 
 
-def _anchor_location(chapter: Chapter, excerpt: str) -> tuple[Location, dict[str, Any]]:
-    """Locate *excerpt* in chapter content; mark unanchored when not found."""
+def _anchor_location(
+    chapter: Chapter, excerpt: str, *, search_from: int = 0
+) -> tuple[Location, dict[str, Any], int]:
+    """Locate the next *excerpt* at or after *search_from*.
+
+    A repeated phrase must not all collapse onto the first copy in the chapter.
+    """
     needle = (excerpt or "").strip()
     meta: dict[str, Any] = {}
     if needle:
-        idx = chapter.content.find(needle)
+        idx = chapter.content.find(needle, search_from)
         if idx >= 0:
-            return location_from_span(chapter, idx, idx + len(needle), excerpt=needle), meta
+            return (
+                location_from_span(chapter, idx, idx + len(needle), excerpt=needle),
+                meta,
+                idx + len(needle),
+            )
     meta["unanchored"] = True
     return (
         Location(
@@ -94,6 +103,7 @@ def _anchor_location(chapter: Chapter, excerpt: str) -> tuple[Location, dict[str
             excerpt=excerpt or "",
         ),
         meta,
+        search_from,
     )
 
 
@@ -106,6 +116,7 @@ def items_to_findings(
     one unique repair of the excerpt. A paraphrase stays a human note.
     """
     findings: list[Finding] = []
+    search_from = 0
     for item in items:
         excerpt = str(item.get("excerpt") or "").strip()
         message = str(item.get("message") or "").strip()
@@ -119,7 +130,9 @@ def items_to_findings(
             continue
         if not message:
             message = "Passage appears garbled or broken."
-        location, meta = _anchor_location(chapter, excerpt)
+        location, meta, search_from = _anchor_location(
+            chapter, excerpt, search_from=search_from
+        )
         findings.append(
             Finding(
                 id="",

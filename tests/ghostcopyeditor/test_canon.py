@@ -75,11 +75,21 @@ def test_prompt_includes_cast_and_lexicon() -> None:
     assert "Ilya Fenwick: he/him" in text
 
 
+def test_blank_pronoun_label_has_no_family() -> None:
+    from ghostcopyeditor.canon import _family_for_label
+
+    assert _family_for_label("") is None
+    assert _family_for_label("he/him") is not None
+
+
 def test_loads_pronouns_and_unique_names(tmp_path: Path) -> None:
     cast = _cast(tmp_path)
     by_name = {member.name: member for member in cast}
     assert by_name["Ilya Fenwick"].pronouns == "he/him"
     assert "Ilya" in by_name["Ilya Fenwick"].tokens
+    short = tmp_path / "stories" / "short" / "canon" / "characters"
+    _member_file(short, "bo-smith", "Bo Smith", "he/him")
+    assert "Bo" in load_cast(short.parent.parent)[0].tokens
     assert named_in("Ilya held her sleeve.", cast)[0].name == "Ilya Fenwick"
 
 

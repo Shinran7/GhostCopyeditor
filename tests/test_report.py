@@ -265,6 +265,21 @@ class TestJsonExport:
         payload["findings"][0]["location"]["excerpt"] = ""
         assert any("expected_old" in e for e in validate_autonomicon_schema(payload))
 
+        payload = _load_golden()
+        payload["findings"].append({"message": "no id"})
+        payload["findings"].append({"message": "also no id"})
+        assert validate_autonomicon_schema(payload) == []
+
+        payload = _load_golden()
+        payload["findings"][0]["rule_id"] = "echo.local_repeat"
+        payload["chapters"][0]["finding_ids"].append("missing-id")
+        errors = validate_autonomicon_schema(payload)
+        assert errors == ["echo notes must not sit in findings; use may_look"]
+
+        payload = _load_golden()
+        payload["may_look"] = "nope"
+        assert any("may_look must be a list" in e for e in validate_autonomicon_schema(payload))
+
     def test_persist_also_path(self, tmp_path: Path) -> None:
         (tmp_path / "config.yaml").write_text("format: json\n", encoding="utf-8")
         chapter = tmp_path / "chapter-009.md"
@@ -278,6 +293,40 @@ class TestJsonExport:
         )
         assert path.name == "companion-ch009.json"
         assert also.is_file()
+
+    def test_failed_second_write_restores_the_first(self, tmp_path: Path) -> None:
+        (tmp_path / "config.yaml").write_text("format: json\n", encoding="utf-8")
+        chapter = tmp_path / "chapter-009.md"
+        chapter.write_text("# Nine\n", encoding="utf-8")
+        report = _sample_report()
+        report.manuscript_path = str(chapter)
+        report.chapter_number = 9
+        path = persist_report_json(
+            report, project_root=tmp_path, manuscript_path=chapter
+        )
+        original = path.read_text(encoding="utf-8")
+        also = tmp_path / "extra" / "copy.json"
+        real_write = Path.write_text
+
+        def fail_second(self: Path, text: str, *args: object, **kwargs: object) -> int:
+            if self == also:
+                raise OSError("disk full")
+            return real_write(self, text, *args, **kwargs)
+
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setattr(Path, "write_text", fail_second)
+        try:
+            with pytest.raises(OSError, match="disk full"):
+                persist_report_json(
+                    report,
+                    project_root=tmp_path,
+                    manuscript_path=chapter,
+                    also_path=also,
+                )
+        finally:
+            monkeypatch.undo()
+        assert path.read_text(encoding="utf-8") == original
+        assert not also.exists()
 
     def test_export_json_defaults_to_stdout(
         self, monkeypatch: pytest.MonkeyPatch

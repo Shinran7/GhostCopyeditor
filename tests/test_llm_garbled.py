@@ -144,6 +144,15 @@ class TestItemsToFindings:
         assert findings[2].message.startswith("Passage appears")
         assert findings[2].severity == Severity.WARNING
 
+    def test_repeated_excerpt_anchors_the_later_copy(self) -> None:
+        chapter = _chapter("One road here.\nAnother road here.\n")
+        items = [
+            {"excerpt": "road here", "message": "First.", "severity": "warning"},
+            {"excerpt": "road here", "message": "Second.", "severity": "warning"},
+        ]
+        findings = items_to_findings(items, chapter)
+        assert findings[0].location.char_start < findings[1].location.char_start
+
 
 class TestRunLlmGarbled:
     def test_stub_json_produces_findings(self) -> None:

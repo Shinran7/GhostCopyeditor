@@ -289,6 +289,8 @@ class TestAdapters:
         assert findings[0].category == Category.STYLE
         assert findings[0].severity == Severity.WARNING
         assert findings[0].rule_id == "copy.style_consistency"
+        assert findings[0].location.excerpt == ""
+        assert findings[0].metadata.get("chapter_wide") is True
 
     def test_noul_positive_emits_echo(self) -> None:
         chapter = _chapter("The dark dark corridor stretched on.")

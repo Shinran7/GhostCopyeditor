@@ -117,14 +117,21 @@ def _choice_style_finding(
     confidence = float(getattr(answer, "confidence", 0.0) or 0.0)
     if label != _STYLE_CONCERN or confidence < confidence_floor:
         return None
-    # Prefer a short head of prose for anchoring when no candidate spans apply.
-    head = chapter.content.strip()[:200]
-    location, meta = _anchor_location(chapter, head)
+    # The judgment is about the chapter, not whatever sentence happens to open it.
+    meta = {"unanchored": True, "chapter_wide": True}
+    location = Location(
+        chapter_number=chapter.chapter_number,
+        chapter_path=str(chapter.source_path),
+        excerpt="",
+    )
     return Finding(
         id="",
         category=Category.STYLE,
         severity=Severity.WARNING,
-        message="TypeSafe style concern: sudden register clash or tense wobble.",
+        message=(
+            "TypeSafe style concern: sudden register clash or tense wobble "
+            "somewhere in this chapter."
+        ),
         location=location,
         engine=Engine.TYPESAFE,
         rule_id="copy.style_consistency",

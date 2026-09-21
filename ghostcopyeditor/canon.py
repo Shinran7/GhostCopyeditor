@@ -67,7 +67,13 @@ def _unique_tokens(names: list[str]) -> dict[str, tuple[str, ...]]:
     out: dict[str, tuple[str, ...]] = {}
     for name, parts in parsed:
         tokens = [name]
-        if parts and firsts.get(parts[0].casefold(), 0) == 1 and len(parts[0]) >= 3:
+        # One-letter names match ordinary words. Two letters are kept when unique.
+        if (
+            parts
+            and firsts.get(parts[0].casefold(), 0) == 1
+            and len(parts[0]) >= 2
+            and parts[0].casefold() not in {"an", "or", "of", "to", "in", "on", "at"}
+        ):
             tokens.append(parts[0])
         if (
             len(parts) > 1

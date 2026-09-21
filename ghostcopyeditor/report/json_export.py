@@ -136,6 +136,24 @@ def report_persist_path(
         n += 1
 
 
+def _write_reports_together(paths: list[Path], text: str) -> None:
+    """Write every path, or leave the previous files in place if any write fails."""
+    backups: list[tuple[Path, str | None]] = []
+    try:
+        for path in paths:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            previous = path.read_text(encoding="utf-8") if path.is_file() else None
+            backups.append((path, previous))
+            path.write_text(text, encoding="utf-8")
+    except Exception:
+        for path, previous in reversed(backups):
+            if previous is None:
+                path.unlink(missing_ok=True)
+            else:
+                path.write_text(previous, encoding="utf-8")
+        raise
+
+
 def persist_report_json(
     report: CopyEditReport,
     *,
@@ -156,14 +174,10 @@ def persist_report_json(
         generated_at=generated_at,
     )
     text = json.dumps(report_to_payload(report), indent=2, ensure_ascii=False) + "\n"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text, encoding="utf-8")
-
+    targets = [path]
     if also_path is not None:
-        also = also_path.resolve()
-        also.parent.mkdir(parents=True, exist_ok=True)
-        also.write_text(text, encoding="utf-8")
-
+        targets.append(also_path.resolve())
+    _write_reports_together(targets, text)
     return path
 
 
@@ -187,13 +201,13 @@ def validate_autonomicon_schema(payload: dict[str, Any]) -> list[str]:
         errors.append("findings must be a list")
         findings = []
 
-    ids = [f.get("id") for f in findings if isinstance(f, dict)]
+    ids = [f.get("id") for f in findings if isinstance(f, dict) and f.get("id")]
     if len(ids) != len(set(ids)):
         errors.append("findings[].id values must be unique")
     for finding in findings:
         if isinstance(finding, dict) and finding.get("rule_id") == "echo.local_repeat":
             errors.append("echo notes must not sit in findings; use may_look")
-            break
+            return errors
 
     may_look = payload.get("may_look")
     if not isinstance(may_look, list):
