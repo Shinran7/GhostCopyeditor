@@ -4,11 +4,11 @@
     "author": "agent:deft-directive-setup",
     "description": "Markdown ingest and shared finding model",
     "created": "2026-09-21T15:50:00Z",
-    "updated": "2026-09-21T15:48:28Z"
+    "updated": "2026-09-21T16:43:50Z"
   },
   "plan": {
     "title": "Markdown Ingest and Finding Model",
-    "status": "pending",
+    "status": "completed",
     "id": "scope.markdown-ingest-and-finding-model",
     "narratives": {
       "Overview": "Ingest single Markdown chapters and chapter folders. Define the Finding model used by every engine: location, severity, category, message, suggested fix, engine source. Companion uses one chapter; analyze discovers chapters and runs chapter-by-chapter. Traces: FR-INGEST-1, FR-FIND-1.",
@@ -20,27 +20,45 @@
         "narrative": {
           "Overview": "Discover and order Markdown chapters from a file or folder (Ghostreader-style naming habits)."
         },
-        "status": "pending",
+        "status": "completed",
         "type": "task",
-        "id": "item.1"
+        "id": "item.1",
+        "x-directive/evidence": {
+          "kind": "test",
+          "pointer": "tests/ghostcopyeditor/ingestion/test_markdown_loader.py + test_discovery.py + commit ace4691",
+          "recorded_at": "2026-09-21T17:10:00Z",
+          "recorded_by": "agent:grok-meeseeks-pr2"
+        }
       },
       {
         "title": "Finding model",
         "narrative": {
           "Overview": "Typed Finding with location (chapter/path, line/span), severity, category (grammar|garbled|style|wordiness|echo), message, suggestion, engine."
         },
-        "status": "pending",
+        "status": "completed",
         "type": "task",
-        "id": "item.2"
+        "id": "item.2",
+        "x-directive/evidence": {
+          "kind": "test",
+          "pointer": "tests/ghostcopyeditor/models/test_finding.py + test_report.py (IDs, coordinate space, finding_ids)",
+          "recorded_at": "2026-09-21T17:10:00Z",
+          "recorded_by": "agent:grok-meeseeks-pr2"
+        }
       },
       {
         "title": "Wire into companion/analyze",
         "narrative": {
           "Overview": "Commands load text through ingest and pass an empty finding list through to report stubs."
         },
-        "status": "pending",
+        "status": "completed",
         "type": "task",
-        "id": "item.3"
+        "id": "item.3",
+        "x-directive/evidence": {
+          "kind": "test",
+          "pointer": "tests/ghostcopyeditor/commands/test_companion.py + test_analyze.py (75 passed, cov 98%)",
+          "recorded_at": "2026-09-21T17:10:00Z",
+          "recorded_by": "agent:grok-meeseeks-pr2"
+        }
       }
     ],
     "metadata": {
@@ -48,7 +66,13 @@
       "traces": [
         "FR-INGEST-1",
         "FR-FIND-1"
-      ]
+      ],
+      "lifecycleWrite": {
+        "action": "complete",
+        "writtenAt": "2026-09-21T16:43:50Z"
+      },
+      "completedAt": "2026-09-21T16:43:50Z",
+      "completedSessionId": "host:grok:v1:MDFhMGM0ZDAtOWE2My03NjIxLWFlNjQtNWNjYjVhNTA5NDE3"
     },
     "acceptance": {
       "commands": [],
@@ -80,6 +104,6 @@
       ],
       "ambiguity_attestation": "none_found"
     },
-    "updated": "2026-09-21T15:48:28Z"
+    "updated": "2026-09-21T16:43:50Z"
   }
 }
