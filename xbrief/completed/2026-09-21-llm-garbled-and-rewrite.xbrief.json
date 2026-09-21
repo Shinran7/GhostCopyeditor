@@ -4,11 +4,11 @@
     "author": "agent:deft-directive-setup",
     "description": "LLM engine for garbled text and rewrite suggestions",
     "created": "2026-09-21T15:50:00Z",
-    "updated": "2026-09-21T17:04:40Z"
+    "updated": "2026-09-21T17:13:49Z"
   },
   "plan": {
     "title": "LLM Garbled Text and Rewrite Suggestions",
-    "status": "running",
+    "status": "completed",
     "id": "scope.llm-garbled-and-rewrite",
     "narratives": {
       "Overview": "Third engine: LLM detects garbled/broken sentences and proposes rewrite suggestions. Report-only (not applied by --apply in v1). Reuse Ghostreader-style LLM provider/secrets patterns. Traces: FR-LLM-1.",
@@ -20,34 +20,58 @@
         "narrative": {
           "Overview": "Provider selection and secrets load matching sister apps; stub model for tests."
         },
-        "status": "pending",
+        "status": "completed",
         "type": "task",
-        "id": "item.1"
+        "id": "item.1",
+        "x-directive/evidence": {
+          "kind": "test",
+          "pointer": "ghostcopyeditor/llm.py get_llm/provider routing/stub; tests/ghostcopyeditor/test_llm.py; missing-key non-stub exit 1; commit b47101d",
+          "recorded_at": "2026-09-21T19:30:00Z",
+          "recorded_by": "agent:grok-meeseeks-pr5"
+        }
       },
       {
         "title": "Garbled detection prompts",
         "narrative": {
           "Overview": "Prompts/schema for nonsense, dropped words, mid-edit wreckage; emit Finding with suggestion."
         },
-        "status": "pending",
+        "status": "completed",
         "type": "task",
-        "id": "item.2"
+        "id": "item.2",
+        "x-directive/evidence": {
+          "kind": "test",
+          "pointer": "ghostcopyeditor/llm_engine/prompts.py + garbled.py; tests/ghostcopyeditor/llm_engine/test_prompts.py + test_garbled.py; tests/test_llm_garbled.py parse/JSON stub path",
+          "recorded_at": "2026-09-21T19:30:00Z",
+          "recorded_by": "agent:grok-meeseeks-pr5"
+        }
       },
       {
         "title": "Pipeline placement",
         "narrative": {
           "Overview": "Run after TypeSafe; merge into finding list; keep suggestions report-only for apply."
         },
-        "status": "pending",
+        "status": "completed",
         "type": "task",
-        "id": "item.3"
+        "id": "item.3",
+        "x-directive/evidence": {
+          "kind": "test",
+          "pointer": "pipeline/runner.py after TypeSafe; companion/analyze --no-llm/--model stub; TestApplySkipsLlm + CLI --apply proves LLM spans not written; 195 passed cov 96%",
+          "recorded_at": "2026-09-21T19:30:00Z",
+          "recorded_by": "agent:grok-meeseeks-pr5"
+        }
       }
     ],
     "metadata": {
       "kind": "scope",
       "traces": [
         "FR-LLM-1"
-      ]
+      ],
+      "lifecycleWrite": {
+        "action": "complete",
+        "writtenAt": "2026-09-21T17:13:49Z"
+      },
+      "completedAt": "2026-09-21T17:13:49Z",
+      "completedSessionId": "host:grok:v1:MDFhMGM0ZGEtY2ZmYS03MDYwLThmMWMtNWRmNmQ5ZTY5M2Yy"
     },
     "acceptance": {
       "commands": [],
@@ -79,6 +103,6 @@
       ],
       "ambiguity_attestation": "none_found"
     },
-    "updated": "2026-09-21T17:04:40Z"
+    "updated": "2026-09-21T17:13:49Z"
   }
 }
