@@ -4,11 +4,11 @@
     "author": "agent:deft-directive-setup",
     "description": "Deterministic copy-edit checkers and optional apply",
     "created": "2026-09-21T15:50:00Z",
-    "updated": "2026-09-21T15:48:25Z"
+    "updated": "2026-09-21T16:53:53Z"
   },
   "plan": {
     "title": "Deterministic Checkers and Apply",
-    "status": "pending",
+    "status": "completed",
     "id": "scope.deterministic-checkers-and-apply",
     "narratives": {
       "Overview": "First engine in the pipeline: deterministic checkers for grammar/mechanics where rules are reliable, style consistency hooks, and light wordiness/echo heuristics safe enough for code. Optional --apply writes only safe deterministic fixes. Traces: FR-DET-1, FR-APPLY-1.",
@@ -20,27 +20,45 @@
         "narrative": {
           "Overview": "Pluggable checker protocol returning list[Finding]."
         },
-        "status": "pending",
+        "status": "completed",
         "type": "task",
-        "id": "item.1"
+        "id": "item.1",
+        "x-directive/evidence": {
+          "kind": "test",
+          "pointer": "ghostcopyeditor/checkers/__init__.py Checker protocol + CHECKER_REGISTRY; tests/ghostcopyeditor/checkers/test___init__.py + commit e53ed49",
+          "recorded_at": "2026-09-21T17:30:00Z",
+          "recorded_by": "agent:grok-meeseeks-pr3"
+        }
       },
       {
         "title": "Core deterministic rules",
         "narrative": {
           "Overview": "Implement first-pass grammar/mechanics and style rules; light wordiness/echo heuristics that stay conservative."
         },
-        "status": "pending",
+        "status": "completed",
         "type": "task",
-        "id": "item.2"
+        "id": "item.2",
+        "x-directive/evidence": {
+          "kind": "test",
+          "pointer": "tests/ghostcopyeditor/checkers/test_mechanics.py + test_wordiness.py + test_style.py + test_echo.py + test_regions.py; pipeline dedupe in tests/ghostcopyeditor/pipeline/test_runner.py (120 passed, cov 97%)",
+          "recorded_at": "2026-09-21T17:30:00Z",
+          "recorded_by": "agent:grok-meeseeks-pr3"
+        }
       },
       {
         "title": "Optional --apply",
         "narrative": {
           "Overview": "Apply only deterministic safe fixes; leave TypeSafe/LLM suggestions report-only."
         },
-        "status": "pending",
+        "status": "completed",
         "type": "task",
-        "id": "item.3"
+        "id": "item.3",
+        "x-directive/evidence": {
+          "kind": "test",
+          "pointer": "tests/ghostcopyeditor/checkers/test_apply.py (re-verify, reverse offsets, LLM refused, companion/analyze --apply)",
+          "recorded_at": "2026-09-21T17:30:00Z",
+          "recorded_by": "agent:grok-meeseeks-pr3"
+        }
       }
     ],
     "metadata": {
@@ -48,7 +66,13 @@
       "traces": [
         "FR-DET-1",
         "FR-APPLY-1"
-      ]
+      ],
+      "lifecycleWrite": {
+        "action": "complete",
+        "writtenAt": "2026-09-21T16:53:53Z"
+      },
+      "completedAt": "2026-09-21T16:53:53Z",
+      "completedSessionId": "host:grok:v1:MDFhMGM0ZGEtY2ZmYS03MDYwLThmMWMtNWRmNmQ5ZTY5M2Yy"
     },
     "acceptance": {
       "commands": [],
@@ -80,6 +104,6 @@
       ],
       "ambiguity_attestation": "none_found"
     },
-    "updated": "2026-09-21T15:48:25Z"
+    "updated": "2026-09-21T16:53:53Z"
   }
 }
