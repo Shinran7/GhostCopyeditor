@@ -62,6 +62,16 @@ class TestStateDirs:
         assert state.is_dir()
         assert reports_dir(state) == state / "reports"
 
+    def test_state_falls_back_to_story_folder_without_config(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        chapter = tmp_path / "novel" / "chapters" / "chapter-3.md"
+        chapter.parent.mkdir(parents=True)
+        chapter.write_text("x", encoding="utf-8")
+        state = story_state_dir_for(chapter)
+        assert state == tmp_path / "novel" / ".ghostcopyeditor" / "novel"
+
 
 class TestFindSecretsEnv:
     def test_finds_secrets_file(self, tmp_path: Path) -> None:

@@ -1,0 +1,118 @@
+{
+  "ghostcopyeditor_version": "0.1.0",
+  "mode": "companion",
+  "generated_at": "2026-09-21T16:00:00+00:00",
+  "manuscript_path": "C:/novels/the-jailer-s-wound/chapters/chapter-018.md",
+  "manuscript_name": "the-jailer-s-wound · Chapter 18",
+  "story_slug": "the-jailer-s-wound",
+  "chapter_number": 18,
+  "summary": {
+    "total_findings": 3,
+    "by_severity": {
+      "error": 1,
+      "warning": 1,
+      "suggestion": 1,
+      "info": 0
+    },
+    "by_category": {
+      "grammar": 1,
+      "garbled": 1,
+      "wordiness": 1
+    },
+    "by_engine": {
+      "deterministic": 2,
+      "typesafe": 0,
+      "llm": 1
+    },
+    "applied_count": 0,
+    "chapters_scanned": 1
+  },
+  "findings": [
+    {
+      "id": "det-c018-0001",
+      "category": "grammar",
+      "severity": "error",
+      "message": "Double space between words.",
+      "suggestion": "Use a single space.",
+      "engine": "deterministic",
+      "rule_id": "mech.double_space",
+      "applyable": true,
+      "replacement": " ",
+      "confidence": null,
+      "location": {
+        "chapter_number": 18,
+        "chapter_path": "C:/novels/the-jailer-s-wound/chapters/chapter-018.md",
+        "line_start": 42,
+        "line_end": 42,
+        "char_start": 1024,
+        "char_end": 1026,
+        "excerpt": "He  walked"
+      },
+      "metadata": {
+        "expected_old": "  "
+      }
+    },
+    {
+      "id": "llm-c018-0001",
+      "category": "garbled",
+      "severity": "warning",
+      "message": "Possible mid-edit wreckage.",
+      "suggestion": "Rewrite the sentence cleanly.",
+      "engine": "llm",
+      "rule_id": "llm.garbled",
+      "applyable": false,
+      "replacement": null,
+      "confidence": 0.82,
+      "location": {
+        "chapter_number": 18,
+        "chapter_path": "C:/novels/the-jailer-s-wound/chapters/chapter-018.md",
+        "line_start": 50,
+        "line_end": 50,
+        "char_start": 1400,
+        "char_end": 1430,
+        "excerpt": "He the the walked toward"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "det-c018-0002",
+      "category": "wordiness",
+      "severity": "suggestion",
+      "message": "Wordy phrase.",
+      "suggestion": "Prefer a tighter wording.",
+      "engine": "deterministic",
+      "rule_id": "word.in_order_to",
+      "applyable": true,
+      "replacement": "to",
+      "confidence": null,
+      "location": {
+        "chapter_number": 18,
+        "chapter_path": "C:/novels/the-jailer-s-wound/chapters/chapter-018.md",
+        "line_start": 60,
+        "line_end": 60,
+        "char_start": 1800,
+        "char_end": 1811,
+        "excerpt": "in order to"
+      },
+      "metadata": {
+        "expected_old": "in order to"
+      }
+    }
+  ],
+  "chapters": [
+    {
+      "chapter_number": 18,
+      "chapter_path": "C:/novels/the-jailer-s-wound/chapters/chapter-018.md",
+      "title": "Chapter 18",
+      "finding_ids": [
+        "det-c018-0001",
+        "llm-c018-0001",
+        "det-c018-0002"
+      ]
+    }
+  ],
+  "warnings": [],
+  "typesafe_enabled": false,
+  "llm_enabled": true,
+  "apply": false
+}

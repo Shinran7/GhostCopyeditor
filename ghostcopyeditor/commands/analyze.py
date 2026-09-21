@@ -3,15 +3,12 @@
 from __future__ import annotations
 
 import asyncio
-import json
-import sys
 from pathlib import Path
 from typing import Any
 
 import typer
 from rich import print as rprint
 from rich.console import Console
-from rich.panel import Panel
 
 from ghostcopyeditor.checkers.apply import apply_findings
 from ghostcopyeditor.config import GhostCopyeditorConfig
@@ -19,6 +16,7 @@ from ghostcopyeditor.ingestion.discovery import discover_analyze
 from ghostcopyeditor.llm import get_llm, load_secrets
 from ghostcopyeditor.models.report import ReportSummary
 from ghostcopyeditor.pipeline.runner import run_analyze_pipeline
+from ghostcopyeditor.report import export_json, persist_report_json, render_report
 from ghostcopyeditor.typesafe import (
     TypesafeConfigError,
     ensure_typesafe_api_key,
@@ -167,25 +165,18 @@ def _emit(
     output_format: str,
     output_path: Path | None,
 ) -> None:
-    payload = report.to_dict()
-    if output_path is not None:
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    persist_path = persist_report_json(
+        report,
+        manuscript_path=Path(report.manuscript_path),
+        also_path=output_path,
+    )
+    _ERR.print(f"[dim]Wrote {persist_path}[/dim]")
 
     if output_format == "json":
-        sys.stdout.write(json.dumps(payload, indent=2) + "\n")
+        export_json(report)
         return
 
-    rprint(
-        Panel(
-            f"[green]analyze complete[/green]\n"
-            f"Chapters scanned: {report.summary.chapters_scanned}\n"
-            f"Path: {report.manuscript_path}\n"
-            f"Findings: {report.summary.total_findings}\n"
-            f"Applied: {report.summary.applied_count}",
-            title="ghostcopyeditor",
-        )
-    )
+    render_report(report)
 
 
 __all__ = ["run_analyze"]

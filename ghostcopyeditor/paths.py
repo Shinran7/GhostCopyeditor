@@ -134,16 +134,18 @@ def _resolve_project_root(
 ) -> Path:
     """Resolve project root for state dirs.
 
-    Order: explicit → manuscript config walk → CWD → package root → parent.
+    Order: explicit → manuscript config walk → CWD config walk → story folder.
+    Does not fall back to the package checkout (avoids writing Autonomicon
+    novel state into the GhostCopyeditor install tree).
     """
     if project_root is not None:
         return project_root
-    return (
-        find_project_root(manuscript_path)
-        or find_project_root(Path.cwd())
-        or package_project_root()
-        or manuscript_path.parent
-    )
+    found = find_project_root(manuscript_path) or find_project_root(Path.cwd())
+    if found is not None:
+        return found
+    resolved = manuscript_path.resolve()
+    base = resolved.parent if resolved.is_file() else resolved
+    return _skip_generic_parents(base)
 
 
 def story_state_dir_for(

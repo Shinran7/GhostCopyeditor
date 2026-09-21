@@ -48,13 +48,17 @@ class TestCompanionCommand:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.chdir(tmp_path)
+        (tmp_path / "config.yaml").write_text("format: terminal\n", encoding="utf-8")
         chapter = tmp_path / "chapter-002.md"
-        chapter.write_text("# Two\n", encoding="utf-8")
+        chapter.write_text("# Two\n\nHe walked.\n", encoding="utf-8")
         out = tmp_path / "report.json"
         result = runner.invoke(app, ["companion", str(chapter), "-o", str(out)])
         assert result.exit_code == 0
-        assert "companion complete" in result.output.lower()
+        assert "overview" in result.output.lower() or "findings" in result.output.lower()
         assert out.is_file()
+        reports = list((tmp_path / ".ghostcopyeditor").rglob("companion-ch002.json"))
+        assert reports, "expected persisted companion-ch002.json under .ghostcopyeditor"
+        assert reports[0].is_file()
 
     def test_companion_typesafe_missing_key_exits_1(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

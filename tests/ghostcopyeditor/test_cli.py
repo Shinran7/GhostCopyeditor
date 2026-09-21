@@ -169,7 +169,7 @@ class TestAnalyzeStub:
         (chapters / "chapter-001.md").write_text("# One\n", encoding="utf-8")
         result = runner.invoke(app, ["analyze", str(chapters)])
         assert result.exit_code == 0
-        assert "analyze complete" in result.output.lower()
+        assert "overview" in result.output.lower() or "no findings" in result.output.lower()
 
 
 class TestConfigSetCoercion:
