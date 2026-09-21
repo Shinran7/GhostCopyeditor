@@ -111,7 +111,7 @@ def companion(
     no_llm: NoLlmOption = False,
     verbose: VerboseOption = False,
 ) -> None:
-    """Copy-edit one chapter (Autonomicon hook). Engines land in later PRs."""
+    """Copy-edit one chapter (Autonomicon hook). Optional --apply is deterministic-only."""
     from ghostcopyeditor.commands.companion import run_companion
 
     path = path.resolve()
@@ -143,7 +143,7 @@ def analyze(
     no_llm: NoLlmOption = False,
     verbose: VerboseOption = False,
 ) -> None:
-    """Copy-edit a chapter folder (combined report). Engines land in later PRs."""
+    """Copy-edit a chapter folder (combined report). Optional --apply is deterministic-only."""
     from ghostcopyeditor.commands.analyze import run_analyze
 
     path = path.resolve()

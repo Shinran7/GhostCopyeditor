@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import sys
 from pathlib import Path
@@ -11,9 +12,11 @@ from rich import print as rprint
 from rich.console import Console
 from rich.panel import Panel
 
+from ghostcopyeditor.checkers.apply import apply_findings
 from ghostcopyeditor.config import GhostCopyeditorConfig
 from ghostcopyeditor.ingestion.discovery import discover_companion
-from ghostcopyeditor.models.report import CopyEditReport
+from ghostcopyeditor.models.report import CopyEditReport, ReportSummary
+from ghostcopyeditor.pipeline.runner import run_chapter_pipeline
 
 _ERR = Console(stderr=True)
 
@@ -29,7 +32,7 @@ def run_companion(
     model: str | None,
     verbose: bool,
 ) -> None:
-    """Load one chapter and emit an empty-findings stub report."""
+    """Load one chapter, run deterministic pipeline, optionally apply."""
     path = path.resolve()
     try:
         discovery = discover_companion(path)
@@ -43,6 +46,7 @@ def run_companion(
     cfg = GhostCopyeditorConfig.load(path)
     typesafe_on = cfg.typesafe_enabled if typesafe is None else typesafe
     llm_on = bool(cfg.llm_enabled and not no_llm) or bool(model and not no_llm)
+    do_apply = apply or cfg.apply_default
 
     if verbose or output_format == "json":
         _ERR.print(
@@ -51,7 +55,20 @@ def run_companion(
             f"({len(discovery.chapter.content)} chars)"
         )
 
-    # Engines land in later PRs — pass empty findings through the stable shape.
+    findings = asyncio.run(
+        run_chapter_pipeline(
+            discovery.chapter,
+            cfg=cfg,
+            typesafe_enabled=typesafe_on,
+            llm_enabled=llm_on,
+        )
+    )
+
+    warnings = list(discovery.warnings)
+    if do_apply:
+        _, apply_warnings = apply_findings([discovery.chapter], findings)
+        warnings.extend(apply_warnings)
+
     report = CopyEditReport.empty(
         mode="companion",
         manuscript_path=str(discovery.path),
@@ -61,9 +78,13 @@ def run_companion(
         chapters=[discovery.chapter],
         typesafe_enabled=typesafe_on,
         llm_enabled=llm_on,
-        apply=apply,
-        warnings=discovery.warnings,
-        findings=[],
+        apply=do_apply,
+        warnings=warnings,
+        findings=findings,
+    )
+    # Recompute summary so applied_count reflects metadata.applied.
+    report.summary = ReportSummary.from_findings(
+        findings, chapters_scanned=1
     )
     _emit(report, output_format=output_format, output_path=output_path)
 
@@ -90,12 +111,14 @@ def _emit(
         sys.stdout.write(json.dumps(payload, indent=2) + "\n")
         return
 
+    applied = report.summary.applied_count
     rprint(
         Panel(
-            f"[green]companion complete[/green] — engines not wired yet.\n"
+            f"[green]companion complete[/green]\n"
             f"Chapter: {report.chapter_number}\n"
             f"Path: {report.manuscript_path}\n"
-            f"Findings: {report.summary.total_findings}",
+            f"Findings: {report.summary.total_findings}\n"
+            f"Applied: {applied}",
             title="ghostcopyeditor",
         )
     )

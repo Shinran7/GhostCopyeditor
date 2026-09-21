@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import sys
 from pathlib import Path
@@ -11,9 +12,11 @@ from rich import print as rprint
 from rich.console import Console
 from rich.panel import Panel
 
+from ghostcopyeditor.checkers.apply import apply_findings
 from ghostcopyeditor.config import GhostCopyeditorConfig
 from ghostcopyeditor.ingestion.discovery import discover_analyze
-from ghostcopyeditor.models.report import CopyEditReport
+from ghostcopyeditor.models.report import ReportSummary
+from ghostcopyeditor.pipeline.runner import run_analyze_pipeline
 
 _ERR = Console(stderr=True)
 
@@ -29,7 +32,7 @@ def run_analyze(
     model: str | None,
     verbose: bool,
 ) -> None:
-    """Discover chapters in order and emit an empty-findings stub report."""
+    """Discover chapters, run deterministic pipeline, optionally apply."""
     path = path.resolve()
     try:
         discovery = discover_analyze(path)
@@ -43,6 +46,7 @@ def run_analyze(
     cfg = GhostCopyeditorConfig.load(path)
     typesafe_on = cfg.typesafe_enabled if typesafe is None else typesafe
     llm_on = bool(cfg.llm_enabled and not no_llm) or bool(model and not no_llm)
+    do_apply = apply or cfg.apply_default
 
     if verbose or output_format == "json":
         nums = ", ".join(f"{ch.chapter_number:03d}" for ch in discovery.chapters)
@@ -51,19 +55,29 @@ def run_analyze(
             f"{len(discovery.chapters)} chapter(s) [{nums}]"
         )
 
-    report = CopyEditReport.empty(
-        mode="analyze",
-        manuscript_path=str(discovery.path),
-        manuscript_name=discovery.manuscript_name,
-        story_slug=discovery.story_slug,
-        chapter_number=None,
-        chapters=discovery.chapters,
-        typesafe_enabled=typesafe_on,
-        llm_enabled=llm_on,
-        apply=apply,
-        warnings=discovery.warnings,
-        findings=[],
+    report = asyncio.run(
+        run_analyze_pipeline(
+            discovery.chapters,
+            cfg=cfg,
+            typesafe_enabled=typesafe_on,
+            llm_enabled=llm_on,
+            mode="analyze",
+            manuscript_path=str(discovery.path),
+            manuscript_name=discovery.manuscript_name,
+            story_slug=discovery.story_slug,
+            chapter_number=None,
+            apply=do_apply,
+            warnings=list(discovery.warnings),
+        )
     )
+
+    if do_apply:
+        _, apply_warnings = apply_findings(discovery.chapters, report.findings)
+        report.warnings.extend(apply_warnings)
+        report.summary = ReportSummary.from_findings(
+            report.findings, chapters_scanned=len(discovery.chapters)
+        )
+
     _emit(report, output_format=output_format, output_path=output_path)
 
 
@@ -75,7 +89,7 @@ def _print_error(msg: str, *, output_format: str) -> None:
 
 
 def _emit(
-    report: CopyEditReport,
+    report,
     *,
     output_format: str,
     output_path: Path | None,
@@ -91,10 +105,11 @@ def _emit(
 
     rprint(
         Panel(
-            f"[green]analyze complete[/green] — engines not wired yet.\n"
+            f"[green]analyze complete[/green]\n"
             f"Chapters scanned: {report.summary.chapters_scanned}\n"
             f"Path: {report.manuscript_path}\n"
-            f"Findings: {report.summary.total_findings}",
+            f"Findings: {report.summary.total_findings}\n"
+            f"Applied: {report.summary.applied_count}",
             title="ghostcopyeditor",
         )
     )
