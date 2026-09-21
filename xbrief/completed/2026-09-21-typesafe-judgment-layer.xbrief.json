@@ -4,11 +4,11 @@
     "author": "agent:deft-directive-setup",
     "description": "TypeSafe judgment layer for copy-edit calls",
     "created": "2026-09-21T15:50:00Z",
-    "updated": "2026-09-21T16:54:33Z"
+    "updated": "2026-09-21T17:04:03Z"
   },
   "plan": {
     "title": "TypeSafe Judgment Layer",
-    "status": "running",
+    "status": "completed",
     "id": "scope.typesafe-judgment-layer",
     "narratives": {
       "Overview": "Second engine: TypeSafe SDK integration for judgment calls where deterministic rules are weak (ambiguous grammar, style preference, echo that needs context). Follow Ghostreader typesafe/ patterns: enable flag, API key via secrets, confidence floor. Traces: FR-TS-1, NFR-5.",
@@ -20,27 +20,45 @@
         "narrative": {
           "Overview": "SDK import guards, secrets key load, config enable + confidence floor."
         },
-        "status": "pending",
+        "status": "completed",
         "type": "task",
-        "id": "item.1"
+        "id": "item.1",
+        "x-directive/evidence": {
+          "kind": "test",
+          "pointer": "ghostcopyeditor/typesafe/client.py + routing.py; tests/ghostcopyeditor/typesafe/test_client.py + test_routing.py + test_suite.py; companion/analyze --typesafe missing-key exit 1; commit 4d2103c",
+          "recorded_at": "2026-09-21T18:30:00Z",
+          "recorded_by": "agent:grok-meeseeks-pr4"
+        }
       },
       {
         "title": "Copy-edit question set",
         "narrative": {
           "Overview": "Define TypeSafe questions/adapters for grammar ambiguity, style consistency, and light echo/wordiness judgments."
         },
-        "status": "pending",
+        "status": "completed",
         "type": "task",
-        "id": "item.2"
+        "id": "item.2",
+        "x-directive/evidence": {
+          "kind": "test",
+          "pointer": "ghostcopyeditor/typesafe/questions.py + adapters.py + state.py; tests/ghostcopyeditor/typesafe/test_questions.py + test_adapters.py + test_state.py + test_suite.py (Choice floor / Noul bands)",
+          "recorded_at": "2026-09-21T18:30:00Z",
+          "recorded_by": "agent:grok-meeseeks-pr4"
+        }
       },
       {
         "title": "Pipeline integration",
         "narrative": {
           "Overview": "Run after deterministic checkers; merge findings without duplicates where possible."
         },
-        "status": "pending",
+        "status": "completed",
         "type": "task",
-        "id": "item.3"
+        "id": "item.3",
+        "x-directive/evidence": {
+          "kind": "test",
+          "pointer": "ghostcopyeditor/typesafe/judgments.py + pipeline/runner.py; tests/ghostcopyeditor/typesafe/test_judgments.py + test_suite.py TestAskAndPipeline; mocked client companion/analyze CLI tests; 164 passed cov 97%",
+          "recorded_at": "2026-09-21T18:30:00Z",
+          "recorded_by": "agent:grok-meeseeks-pr4"
+        }
       }
     ],
     "metadata": {
@@ -48,7 +66,13 @@
       "traces": [
         "FR-TS-1",
         "NFR-5"
-      ]
+      ],
+      "lifecycleWrite": {
+        "action": "complete",
+        "writtenAt": "2026-09-21T17:04:03Z"
+      },
+      "completedAt": "2026-09-21T17:04:03Z",
+      "completedSessionId": "host:grok:v1:MDFhMGM0ZGEtY2ZmYS03MDYwLThmMWMtNWRmNmQ5ZTY5M2Yy"
     },
     "acceptance": {
       "commands": [],
@@ -80,6 +104,6 @@
       ],
       "ambiguity_attestation": "none_found"
     },
-    "updated": "2026-09-21T16:54:33Z"
+    "updated": "2026-09-21T17:04:03Z"
   }
 }
