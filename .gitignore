@@ -55,7 +55,6 @@ __pycache__/
 dist/
 build/
 .eggs/
-uv.lock
 
 # Testing / coverage
 .coverage
