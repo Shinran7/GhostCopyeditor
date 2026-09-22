@@ -221,6 +221,9 @@ def config_set(
         "max_tokens",
         "echo_window_words",
         "echo_min_repeats",
+        "echo_phrase_min_n",
+        "echo_phrase_max_n",
+        "echo_phrase_max_gap",
     ):
         if value.lower() in ("null", "none", ""):
             coerced = None

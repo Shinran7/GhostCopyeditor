@@ -205,7 +205,10 @@ def validate_autonomicon_schema(payload: dict[str, Any]) -> list[str]:
     if len(ids) != len(set(ids)):
         errors.append("findings[].id values must be unique")
     for finding in findings:
-        if isinstance(finding, dict) and finding.get("rule_id") == "echo.local_repeat":
+        if isinstance(finding, dict) and finding.get("rule_id") in {
+            "echo.local_repeat",
+            "echo.phrase_dup",
+        }:
             errors.append("echo notes must not sit in findings; use may_look")
             return errors
 

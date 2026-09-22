@@ -31,6 +31,9 @@ class GhostCopyeditorConfig(BaseModel):
     apply_default: bool = False
     echo_window_words: int = 40
     echo_min_repeats: int = 3
+    echo_phrase_min_n: int = 3
+    echo_phrase_max_n: int = 4
+    echo_phrase_max_gap: int = 2
     wordiness_enabled: bool = True
 
     @classmethod
@@ -92,6 +95,11 @@ class GhostCopyeditorConfig(BaseModel):
             "# Echo: min repeated content-word hits within window",
             f"echo_window_words: {_fmt(self.echo_window_words)}",
             f"echo_min_repeats: {_fmt(self.echo_min_repeats)}",
+            "",
+            "# Echo: close-proximity phrase stutter (3–4 word n-grams, gap ≤ N)",
+            f"echo_phrase_min_n: {_fmt(self.echo_phrase_min_n)}",
+            f"echo_phrase_max_n: {_fmt(self.echo_phrase_max_n)}",
+            f"echo_phrase_max_gap: {_fmt(self.echo_phrase_max_gap)}",
             "",
             "# Wordiness: enable built-in phrase map",
             f"wordiness_enabled: {_fmt(self.wordiness_enabled)}",

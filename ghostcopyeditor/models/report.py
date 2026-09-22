@@ -166,7 +166,10 @@ def partition_action_list(
     action: list[Finding] = []
     may_look: list[Finding] = []
     for finding in findings:
-        if finding.category == Category.ECHO or finding.rule_id == "echo.local_repeat":
+        if finding.category == Category.ECHO or finding.rule_id in {
+            "echo.local_repeat",
+            "echo.phrase_dup",
+        }:
             may_look.append(finding)
         else:
             action.append(finding)

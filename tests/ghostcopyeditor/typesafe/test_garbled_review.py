@@ -127,3 +127,17 @@ def test_pipeline_drops_brute_echo() -> None:
     assert any(f.rule_id == "echo.local_repeat" for f in raw)
     findings = asyncio.run(run_chapter_pipeline(chapter, cfg=GhostCopyeditorConfig()))
     assert all(f.rule_id != "echo.local_repeat" for f in findings)
+
+
+def test_pipeline_keeps_phrase_dup_echo() -> None:
+    from ghostcopyeditor.checkers.echo import EchoChecker
+
+    text = (
+        "The auditor stepped back, which measured the morning. "
+        "No. Which measured the air.\n"
+    )
+    chapter = _chapter(text)
+    raw = EchoChecker().check(chapter, GhostCopyeditorConfig())
+    assert any(f.rule_id == "echo.phrase_dup" for f in raw)
+    findings = asyncio.run(run_chapter_pipeline(chapter, cfg=GhostCopyeditorConfig()))
+    assert any(f.rule_id == "echo.phrase_dup" for f in findings)

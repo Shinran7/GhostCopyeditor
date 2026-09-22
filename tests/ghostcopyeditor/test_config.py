@@ -23,6 +23,9 @@ class TestGhostCopyeditorConfig:
         assert cfg.apply_default is False
         assert cfg.echo_window_words == 40
         assert cfg.echo_min_repeats == 3
+        assert cfg.echo_phrase_min_n == 3
+        assert cfg.echo_phrase_max_n == 4
+        assert cfg.echo_phrase_max_gap == 2
         assert cfg.wordiness_enabled is True
 
     def test_save_includes_engine_flags(self, tmp_path: Path) -> None:
@@ -33,6 +36,8 @@ class TestGhostCopyeditorConfig:
         assert "llm_enabled: true" in text
         assert "typesafe_confidence_floor: 0.55" in text
         assert "echo_window_words: 40" in text
+        assert "echo_phrase_min_n: 3" in text
+        assert "echo_phrase_max_gap: 2" in text
         loaded = GhostCopyeditorConfig.load(tmp_path)
         assert loaded.typesafe_enabled is True
         assert loaded.llm_enabled is True

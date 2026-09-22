@@ -520,6 +520,10 @@ apply_default: false
 # Echo: min repeated content-word hits within window
 echo_window_words: 40
 echo_min_repeats: 3
+# Echo: close-proximity phrase stutter (Autonomicon polish-pass signature)
+echo_phrase_min_n: 3
+echo_phrase_max_n: 4
+echo_phrase_max_gap: 2
 
 # Wordiness: enable built-in phrase map
 wordiness_enabled: true
@@ -578,6 +582,7 @@ Registry runs all checkers; order is stable and documented.
 | `mech.repeated_punct` | grammar | report-only | no | `!!!!` / `????` → warning; fiction intensity |
 | `style.em_dash` | style | report-only | no | Flag Unicode em dash / `--`; suggestion only (no auto rewrite) |
 | `echo.local_repeat` | echo | report-only | no | Same content word ≥ N times in window |
+| `echo.phrase_dup` | echo | report-only | no | Same 3–4 word phrase twice in one paragraph (gap ≤ 2); polish stutter |
 | `mech.bare_ellipsis` | style | defer | no | Ellipsis normalization deferred (config bikeshed) |
 | `style.tense_hint` | style | defer | no | Leave tense judgment to TypeSafe `copy.style_consistency` |
 
