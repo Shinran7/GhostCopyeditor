@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import ClassVar, Protocol
 
+from ghostcopyeditor.checkers.anachronism import AnachronismChecker
 from ghostcopyeditor.checkers.apply import (
     apply_findings,
     apply_to_chapter,
@@ -26,18 +27,17 @@ class Checker(Protocol):
     def check(self, chapter: Chapter, cfg: GhostCopyeditorConfig) -> list[Finding]: ...
 
 
-# Stable registry order: mechanics → style → wordiness → echo.
+# Stable registry order: mechanics → style → anachronism → wordiness → echo.
 CHECKER_REGISTRY: tuple[Checker, ...] = (
     MechanicsChecker(),
     StyleChecker(),
+    AnachronismChecker(),
     WordinessChecker(),
     EchoChecker(),
 )
 
 
-def run_deterministic_checkers(
-    chapter: Chapter, cfg: GhostCopyeditorConfig
-) -> list[Finding]:
+def run_deterministic_checkers(chapter: Chapter, cfg: GhostCopyeditorConfig) -> list[Finding]:
     """Run every registered deterministic checker in stable order."""
     findings: list[Finding] = []
     for checker in CHECKER_REGISTRY:
@@ -46,6 +46,7 @@ def run_deterministic_checkers(
 
 
 __all__ = [
+    "AnachronismChecker",
     "CHECKER_REGISTRY",
     "Checker",
     "EchoChecker",
