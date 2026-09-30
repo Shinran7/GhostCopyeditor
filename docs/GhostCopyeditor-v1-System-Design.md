@@ -584,6 +584,8 @@ Registry runs all checkers; order is stable and documented.
 | `echo.local_repeat` | echo | report-only | no | Same content word ≥ N times in window |
 | `echo.phrase_dup` | echo | report-only | no | Same 3–4 word phrase twice in one paragraph (gap ≤ 2); polish stutter |
 | `mech.bare_ellipsis` | style | defer | no | Ellipsis normalization deferred (config bikeshed) |
+
+**Zipf uncommon-noun thrash (`#285` / `8c6c4513`):** owned by GhostReader analyze (`thrash_findings`) and Autonomicon mid-stream thrash combat / EoB skill. GhostCopyeditor does **not** gain a Zipf thrash rule or new `Category`. `echo.local_repeat` remains any-content-word window echo; `echo.phrase_dup` remains close phrase stutter.
 | `style.tense_hint` | style | defer | no | Leave tense judgment to TypeSafe `copy.style_consistency` |
 
 \* Applyable rules must set `applyable=True`, `replacement=…`, `metadata.expected_old=…`, and exact `char_start`/`char_end`. If span cannot be proven unique or re-verify would fail, mark non-applyable.
