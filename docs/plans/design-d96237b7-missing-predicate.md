@@ -710,10 +710,10 @@ No new network calls in the deterministic detector (model local after install).
 
 ## Open Questions
 
-1. **Model pin exact wheel version** — freeze `en_core_web_sm-3.7.1` vs “whatever matches spaCy”? Prefer document + CI smoke when `[nlp]` present.
-2. **Editor severity** — isolated punch-list `medium` (design default above) vs `high`?
+1. **Model pin exact wheel version** — ~~operator: no opinion~~ → **closed**: keep design default (document + CI smoke when `[nlp]` present; pin to whatever matches installed spaCy unless CI needs a frozen wheel later).
+2. **Editor severity** — ~~operator: probably medium~~ → **closed**: isolated punch-list **`medium`**.
 3. ~~Candidate-only until confirmed~~ — **closed**: KD5 locks deterministic WARNING always; TypeSafe demotes intentional per hit to INFO. Not open.
-4. **INFO demotion destination** — stay in `findings` as INFO (design default), or later extend `may_look`? Prefer stay in `findings` for v1 (no schema change to `partition_action_list`).
+4. **INFO demotion destination** — ~~operator: no strong opinion~~ → **closed**: stay in `findings` as INFO for v1 (no `may_look` schema change).
 5. ~~Autonomicon import style~~ — **closed**: `GHOSTCOPYEDITOR_ROOT` / sibling `GhostCopyeditor` on `sys.path`, else soft-skip (see Autonomicon import section).
 
 ---
