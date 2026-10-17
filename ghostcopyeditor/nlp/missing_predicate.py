@@ -6,15 +6,11 @@ import logging
 import re
 from dataclasses import dataclass
 
-from ghostcopyeditor.checkers.regions import (
-    Span,
-    find_double_quote_spans,
-    non_prose_spans,
-    span_overlaps_any,
-)
 from ghostcopyeditor.nlp.spacy_runtime import get_nlp
 
 logger = logging.getLogger("ghostcopyeditor.nlp")
+
+# Regions imported lazily inside detect to avoid nlp ↔ checkers package cycle.
 
 _FINITE_TAGS = frozenset({"VBZ", "VBD", "VBP", "MD", "VB"})
 _FINITE_AUX_DEPS = frozenset({"aux", "auxpass", "cop"})
@@ -60,7 +56,7 @@ def _alphabetic_token_count(sent: object) -> int:
     return sum(1 for tok in sent if getattr(tok, "is_alpha", False))
 
 
-def _is_dialogue_heavy(sent: object, quote_spans: list[Span]) -> bool:
+def _is_dialogue_heavy(sent: object, quote_spans: list) -> bool:
     tokens = list(sent)
     if not tokens:
         return False
@@ -94,13 +90,19 @@ def detect_missing_predicates(
     min_tokens: int = 5,
     skip_dialogue_heavy: bool = True,
     require_period: bool = True,
-    non_prose: list[Span] | None = None,
+    non_prose: list | None = None,
 ) -> list[MissingPredicateHit]:
     """No finite predicate (ROOT + aux/auxpass/cop rule) + v1 quiet gates.
 
     Empty if spaCy unavailable. Editor and GCE both call this. Do not expose
     a separate "raw loud ROOT" path for product seats.
     """
+    from ghostcopyeditor.checkers.regions import (
+        find_double_quote_spans,
+        non_prose_spans,
+        span_overlaps_any,
+    )
+
     nlp = get_nlp()
     if nlp is None:
         return []
