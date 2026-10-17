@@ -11,3 +11,10 @@ includes:
   deft:
     taskfile: ./.deft/core/Taskfile.yml
     optional: true
+
+tasks:
+  nlp-model:
+    desc: Install spaCy en_core_web_sm for missing-predicate detect
+    cmds:
+      - uv sync --extra nlp
+      - uv run python -m spacy download en_core_web_sm
