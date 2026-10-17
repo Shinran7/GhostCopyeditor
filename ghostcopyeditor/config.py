@@ -35,6 +35,11 @@ class GhostCopyeditorConfig(BaseModel):
     echo_phrase_max_n: int = 4
     echo_phrase_max_gap: int = 2
     wordiness_enabled: bool = True
+    missing_predicate_enabled: bool = True
+    missing_predicate_min_tokens: int = 5
+    missing_predicate_skip_dialogue_heavy: bool = True
+    missing_predicate_typesafe_confirm: bool = True
+    missing_predicate_require_period: bool = True
 
     @classmethod
     def load(cls, manuscript_path: Path | None = None) -> GhostCopyeditorConfig:
@@ -103,6 +108,29 @@ class GhostCopyeditorConfig(BaseModel):
             "",
             "# Wordiness: enable built-in phrase map",
             f"wordiness_enabled: {_fmt(self.wordiness_enabled)}",
+            "",
+            "# Missing predicate: spaCy no-finite-verb detect (needs [nlp] extra)",
+            f"missing_predicate_enabled: {_fmt(self.missing_predicate_enabled)}",
+            f"missing_predicate_min_tokens: {_fmt(self.missing_predicate_min_tokens)}",
+            (
+                "# Skip dialogue-heavy sentences (ASCII double quotes)"
+            ),
+            (
+                "missing_predicate_skip_dialogue_heavy: "
+                f"{_fmt(self.missing_predicate_skip_dialogue_heavy)}"
+            ),
+            (
+                "# TypeSafe per-hit confirm (intentional → INFO)"
+            ),
+            (
+                "missing_predicate_typesafe_confirm: "
+                f"{_fmt(self.missing_predicate_typesafe_confirm)}"
+            ),
+            "# v1: only period-terminated sentences are loud",
+            (
+                "missing_predicate_require_period: "
+                f"{_fmt(self.missing_predicate_require_period)}"
+            ),
             "",
         ]
 

@@ -13,12 +13,15 @@ def test_registry_order_and_rule_ids() -> None:
     names = [type(c).__name__ for c in CHECKER_REGISTRY]
     assert names == [
         "MechanicsChecker",
+        "MissingPredicateChecker",
         "StyleChecker",
+        "AnachronismChecker",
         "WordinessChecker",
         "EchoChecker",
     ]
     all_ids = {rid for c in CHECKER_REGISTRY for rid in c.rule_ids}
     assert "mech.double_space" in all_ids
+    assert "mech.missing_predicate" in all_ids
     assert "style.em_dash" in all_ids
     assert "echo.local_repeat" in all_ids
     assert "echo.phrase_dup" in all_ids

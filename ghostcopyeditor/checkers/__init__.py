@@ -12,6 +12,7 @@ from ghostcopyeditor.checkers.apply import (
 )
 from ghostcopyeditor.checkers.echo import EchoChecker
 from ghostcopyeditor.checkers.mechanics import MechanicsChecker
+from ghostcopyeditor.checkers.missing_predicate import MissingPredicateChecker
 from ghostcopyeditor.checkers.style import StyleChecker
 from ghostcopyeditor.checkers.wordiness import WordinessChecker
 from ghostcopyeditor.config import GhostCopyeditorConfig
@@ -27,9 +28,10 @@ class Checker(Protocol):
     def check(self, chapter: Chapter, cfg: GhostCopyeditorConfig) -> list[Finding]: ...
 
 
-# Stable registry order: mechanics → style → anachronism → wordiness → echo.
+# Stable order: mechanics → missing_predicate → style → anachronism → wordiness → echo.
 CHECKER_REGISTRY: tuple[Checker, ...] = (
     MechanicsChecker(),
+    MissingPredicateChecker(),
     StyleChecker(),
     AnachronismChecker(),
     WordinessChecker(),
@@ -51,6 +53,7 @@ __all__ = [
     "Checker",
     "EchoChecker",
     "MechanicsChecker",
+    "MissingPredicateChecker",
     "StyleChecker",
     "WordinessChecker",
     "apply_findings",

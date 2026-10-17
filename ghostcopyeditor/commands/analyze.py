@@ -61,6 +61,11 @@ def run_analyze(
         warnings.append(notice)
     if cast:
         warnings.append(f"Book cast: {len(cast)} characters.")
+    from ghostcopyeditor.nlp import missing_predicate_skip_warning, warn_stderr_once
+
+    if w := missing_predicate_skip_warning(cfg):
+        warnings.append(w)
+        warn_stderr_once()
     typesafe_on = resolve_typesafe_enabled(typesafe, cfg)
     llm_on = bool(cfg.llm_enabled and not no_llm) or bool(model and not no_llm)
     do_apply = apply or cfg.apply_default

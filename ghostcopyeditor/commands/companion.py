@@ -118,6 +118,11 @@ def run_companion(
         warnings.append(notice)
     if cast:
         warnings.append(f"Book cast: {len(cast)} characters.")
+    from ghostcopyeditor.nlp import missing_predicate_skip_warning, warn_stderr_once
+
+    if w := missing_predicate_skip_warning(cfg):
+        warnings.append(w)
+        warn_stderr_once()
     if do_apply:
         _, apply_warnings = apply_findings([discovery.chapter], findings)
         warnings.extend(apply_warnings)

@@ -27,6 +27,11 @@ class TestGhostCopyeditorConfig:
         assert cfg.echo_phrase_max_n == 4
         assert cfg.echo_phrase_max_gap == 2
         assert cfg.wordiness_enabled is True
+        assert cfg.missing_predicate_enabled is True
+        assert cfg.missing_predicate_min_tokens == 5
+        assert cfg.missing_predicate_skip_dialogue_heavy is True
+        assert cfg.missing_predicate_typesafe_confirm is True
+        assert cfg.missing_predicate_require_period is True
 
     def test_save_includes_engine_flags(self, tmp_path: Path) -> None:
         cfg = GhostCopyeditorConfig(typesafe_enabled=True, llm_enabled=True)
@@ -38,9 +43,12 @@ class TestGhostCopyeditorConfig:
         assert "echo_window_words: 40" in text
         assert "echo_phrase_min_n: 3" in text
         assert "echo_phrase_max_gap: 2" in text
+        assert "missing_predicate_enabled: true" in text
+        assert "missing_predicate_min_tokens: 5" in text
         loaded = GhostCopyeditorConfig.load(tmp_path)
         assert loaded.typesafe_enabled is True
         assert loaded.llm_enabled is True
+        assert loaded.missing_predicate_enabled is True
 
     def test_save_writes_gemini_default(self, tmp_path: Path) -> None:
         cfg = GhostCopyeditorConfig()

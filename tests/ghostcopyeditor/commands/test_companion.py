@@ -118,3 +118,42 @@ class TestCompanionCommand:
         assert result.exit_code == 0
         data = json.loads(result.stdout)
         assert data["typesafe_enabled"] is True
+
+    def test_companion_missing_predicate_skip_warning(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import ghostcopyeditor.nlp.spacy_runtime as rt
+
+        monkeypatch.chdir(tmp_path)
+        _reset = getattr(rt, "_reset_for_tests")
+        _reset()
+        monkeypatch.setattr(rt, "_NLP", None)
+        monkeypatch.setattr(rt, "_LOAD_ERROR", "forced missing model")
+        monkeypatch.setattr(rt, "_STDERR_ONCE", False)
+
+        chapter = tmp_path / "story" / "chapters" / "chapter-009.md"
+        chapter.parent.mkdir(parents=True)
+        chapter.write_text(
+            "# Nine\n\nHe  walked.\n",
+            encoding="utf-8",
+        )
+        result = runner.invoke(
+            app,
+            [
+                "companion",
+                str(chapter),
+                "--format",
+                "json",
+                "--no-typesafe",
+                "--no-llm",
+            ],
+        )
+        assert result.exit_code == 0
+        data = json.loads(result.stdout)
+        skip = (
+            "missing_predicate skipped: install ghostcopyeditor[nlp] and run: "
+            "python -m spacy download en_core_web_sm"
+        )
+        assert skip in data["warnings"]
+        # Other checkers still run (double space).
+        assert any(f.get("rule_id") == "mech.double_space" for f in data["findings"])
