@@ -16,6 +16,7 @@ from ghostcopyeditor.ingestion import Chapter
 from ghostcopyeditor.lexicon import Lexicon
 from ghostcopyeditor.models.finding import Finding
 from ghostcopyeditor.typesafe.client import ask
+from ghostcopyeditor.typesafe.per_hit_budget import PerHitAskBudget
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +90,8 @@ async def review_garbled_findings(
     cfg: GhostCopyeditorConfig,
     lexicon: Lexicon | None = None,
     cast: tuple[CastMember, ...] = (),
+    *,
+    budget: PerHitAskBudget | None = None,
 ) -> list[Finding]:
     """Drop voice. Keep confirmed garble. Unconfirmed garble is not applyable."""
     book = lexicon or Lexicon()
@@ -102,6 +105,10 @@ async def review_garbled_findings(
     kept: list[Finding] = []
     for finding in findings:
         if finding.rule_id != "llm.garbled":
+            kept.append(finding)
+            continue
+        if budget is not None and not budget.try_consume():
+            _disarm(finding)
             kept.append(finding)
             continue
         state = {

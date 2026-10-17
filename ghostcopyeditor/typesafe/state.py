@@ -13,6 +13,7 @@ PROSE_MAX_CHARS = 12_000
 CANDIDATE_MAX_CHARS = 600
 CANDIDATE_MAX_COUNT = 8
 CANDIDATE_MIN_FOR_LIST = 3
+MISSING_PREDICATE_RESERVED = 2
 
 _TERMINAL_RE = re.compile(r"[.?!][\"')\]]*$")
 _AGREEMENT_RE = re.compile(
@@ -71,23 +72,23 @@ def sample_candidate_passages(
     chapter: Chapter,
     det_findings: list[Finding],
 ) -> list[dict[str, Any]]:
-    """Prefer up to 8 passages (≤600 chars) from fragments and echo/wordiness hits."""
+    """Prefer up to 8 passages; missing-predicate first (reserve 2 slots)."""
     content = chapter.content
     skipped = non_prose_spans(content)
     candidates: list[dict[str, Any]] = []
     seen: set[tuple[int, int]] = set()
 
-    def _add(start: int, end: int, source: str) -> None:
+    def _add(start: int, end: int, source: str) -> bool:
         if start < 0 or end <= start:
-            return
+            return False
         if span_overlaps_any(start, end, skipped):
-            return
+            return False
         key = (start, end)
         if key in seen:
-            return
+            return False
         excerpt = _clip_excerpt(content[start:end])
         if not excerpt:
-            return
+            return False
         seen.add(key)
         candidates.append(
             {
@@ -97,12 +98,42 @@ def sample_candidate_passages(
                 "source": source,
             }
         )
+        return True
+
+    def _add_finding_span(finding: Finding, source: str) -> bool:
+        loc = finding.location
+        if loc.char_start is not None and loc.char_end is not None:
+            return _add(loc.char_start, loc.char_end, source)
+        excerpt = _clip_excerpt(loc.excerpt) if loc.excerpt else ""
+        idx = content.find(excerpt.rstrip("…")) if excerpt else -1
+        if idx >= 0:
+            return _add(idx, idx + len(excerpt.rstrip("…")), source)
+        return False
+
+    mp_findings = [
+        f for f in det_findings if f.rule_id == "mech.missing_predicate"
+    ]
+    mp_reserved_ids: set[int] = set()
+    for finding in mp_findings:
+        if len(mp_reserved_ids) >= MISSING_PREDICATE_RESERVED:
+            break
+        if len(candidates) >= CANDIDATE_MAX_COUNT:
+            break
+        if _add_finding_span(finding, "missing_predicate"):
+            mp_reserved_ids.add(id(finding))
 
     for start, end, para in _paragraph_spans(content):
+        if len(candidates) >= CANDIDATE_MAX_COUNT:
+            break
         if _looks_like_fragment(para) or _AGREEMENT_RE.search(para):
             _add(start, end, "heuristic")
-            if len(candidates) >= CANDIDATE_MAX_COUNT:
-                break
+
+    for finding in mp_findings:
+        if id(finding) in mp_reserved_ids:
+            continue
+        if len(candidates) >= CANDIDATE_MAX_COUNT:
+            break
+        _add_finding_span(finding, "missing_predicate")
 
     echo_wordy = [
         f
@@ -110,18 +141,10 @@ def sample_candidate_passages(
         if f.category in (Category.ECHO, Category.WORDINESS)
         and f.location.excerpt
     ]
-    # Prefer higher-severity / earlier findings; already in checker order.
     for finding in echo_wordy:
         if len(candidates) >= CANDIDATE_MAX_COUNT:
             break
-        loc = finding.location
-        if loc.char_start is not None and loc.char_end is not None:
-            _add(loc.char_start, loc.char_end, finding.category.value)
-        else:
-            excerpt = _clip_excerpt(loc.excerpt)
-            idx = content.find(excerpt.rstrip("…")) if excerpt else -1
-            if idx >= 0:
-                _add(idx, idx + len(excerpt.rstrip("…")), finding.category.value)
+        _add_finding_span(finding, finding.category.value)
 
     return candidates[:CANDIDATE_MAX_COUNT]
 

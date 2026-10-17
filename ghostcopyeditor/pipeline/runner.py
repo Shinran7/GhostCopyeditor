@@ -121,15 +121,32 @@ async def run_chapter_pipeline(
         drop_brute_echo,
         review_garbled_findings,
     )
+    from ghostcopyeditor.typesafe.missing_predicate_review import (
+        review_missing_predicate_findings,
+    )
+    from ghostcopyeditor.typesafe.per_hit_budget import PerHitAskBudget
 
+    per_hit_budget = PerHitAskBudget()
+    ts_client = typesafe_client if typesafe_enabled else None
     if any(finding.rule_id == "llm.garbled" for finding in findings):
         findings = await review_garbled_findings(
             chapter,
             findings,
-            typesafe_client if typesafe_enabled else None,
+            ts_client,
             cfg,
             lexicon=book,
             cast=cast,
+            budget=per_hit_budget,
+        )
+    if any(finding.rule_id == "mech.missing_predicate" for finding in findings):
+        findings = await review_missing_predicate_findings(
+            chapter,
+            findings,
+            ts_client,
+            cfg,
+            lexicon=book,
+            cast=cast,
+            budget=per_hit_budget,
         )
     findings = drop_brute_echo(findings)
     findings = apply_cast(findings, cast)
