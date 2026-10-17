@@ -6,6 +6,7 @@ from ghostcopyeditor.nlp.missing_predicate import (
     MissingPredicateHit,
     detect_missing_predicates,
     has_finite_predicate,
+    sentence_has_finite_predicate,
 )
 from ghostcopyeditor.nlp.spacy_runtime import (
     get_nlp,
@@ -21,5 +22,6 @@ __all__ = [
     "has_finite_predicate",
     "missing_predicate_skip_warning",
     "nlp_unavailable_reason",
+    "sentence_has_finite_predicate",
     "warn_stderr_once",
 ]

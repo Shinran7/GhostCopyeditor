@@ -115,6 +115,54 @@ class TestWithModel:
         assert len(hits) >= 1
         assert hits[0].root_tag == "VBN"
 
+    def test_subjectless_past_participle_open_loud(self) -> None:
+        # Resonance Ch4 Gemini/voice-polish wreckage — keep loud.
+        hits = detect_missing_predicates(
+            "Leaned over the control yoke, his shoulder throbbing hard."
+        )
+        assert len(hits) >= 1
+        hits2 = detect_missing_predicates("Stared through the crazed polycarbonate.")
+        assert len(hits2) >= 1
+
+    def test_noun_phrase_fragment_with_vbg_loud(self) -> None:
+        hits = detect_missing_predicates(
+            "The thin rubberized fabric back, exposing the sluggish cabin air."
+        )
+        assert len(hits) >= 1
+
+    def test_spacy_mistag_svo_past_quiet(self) -> None:
+        # spaCy often tags narrative past as VBN / hangs main verb as acl.
+        assert (
+            detect_missing_predicates(
+                "The right track skidded on loose scree before catching solid stone."
+            )
+            == []
+        )
+        assert (
+            detect_missing_predicates(
+                "The storm howled around the canopy in a shriek of wind."
+            )
+            == []
+        )
+        assert (
+            detect_missing_predicates(
+                "A sharp pop echoed from the floorboards beneath their seats."
+            )
+            == []
+        )
+        assert (
+            detect_missing_predicates(
+                "Kieran throttled back, his right boot cramping from the pressure."
+            )
+            == []
+        )
+        assert (
+            detect_missing_predicates(
+                '"Mr. Beaumont," Governor Alistair Sawyer said, smooth across the wire.'
+            )
+            == []
+        )
+
     def test_dialogue_heavy_quiet(self) -> None:
         assert detect_missing_predicates('"Not tonight."') == []
 

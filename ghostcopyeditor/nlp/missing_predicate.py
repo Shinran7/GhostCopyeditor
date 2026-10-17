@@ -13,10 +13,15 @@ logger = logging.getLogger("ghostcopyeditor.nlp")
 # Regions imported lazily inside detect to avoid nlp ↔ checkers package cycle.
 
 _FINITE_TAGS = frozenset({"VBZ", "VBD", "VBP", "MD", "VB"})
+_CLEAR_FINITE_TAGS = frozenset({"VBZ", "VBD", "VBP", "MD"})
 _FINITE_AUX_DEPS = frozenset({"aux", "auxpass", "cop"})
+_PAST_LIKE_TAGS = frozenset({"VBD", "VBN", "VBZ", "VBP"})
+_SUBJECT_DEPS = frozenset({"nsubj", "nsubjpass"})
 # Period optionally followed by closing quotes/brackets (incl. Unicode closers).
 _PERIOD_TERMINAL_RE = re.compile(r'\.[\"\'”’)\]]*$')
 _ELLIPSIS_END_RE = re.compile(r"(?:\.\.\.|…)\s*$")
+# Quote-only leftovers before a real sentence (spaCy split artifact).
+_LEADING_QUOTE_JUNK_RE = re.compile(r'^[\"\'“”]+$')
 
 
 @dataclass(frozen=True)
@@ -35,6 +40,50 @@ def _token_is_finite(token: object) -> bool:
     return pos in {"VERB", "AUX"} and tag in _FINITE_TAGS
 
 
+def _has_mark_child(token: object) -> bool:
+    for child in getattr(token, "children", ()):
+        if getattr(child, "dep_", "") == "mark":
+            return True
+    return False
+
+
+def _is_marked_subordinate(token: object) -> bool:
+    """True for relative clauses and marked adverbial subordinates (as/while/when)."""
+    dep = getattr(token, "dep_", "")
+    if dep == "relcl":
+        return True
+    if dep == "advcl" and _has_mark_child(token):
+        return True
+    return False
+
+
+def _ignore_as_main_finite(token: object) -> bool:
+    """Skip finites that live in subordinate / absolute clauses.
+
+    ``advcl`` / ``relcl`` verbs (and anything under them) are not the main
+    predicate — otherwise \"as he lifted\" quiets a true noun-phrase fragment,
+    and \"had bitten\" quiets subjectless \"Leaned …\".
+
+    Unmarked ``acl`` on a noun is *not* ignored here: spaCy often hangs the
+    real past tense there (\"The track skidded\").
+    """
+    dep = getattr(token, "dep_", "")
+    if dep in {"advcl", "relcl"}:
+        return True
+    cur = getattr(token, "head", None)
+    seen = 0
+    while cur is not None and seen < 32:
+        head_dep = getattr(cur, "dep_", "")
+        if head_dep in {"advcl", "relcl"}:
+            return True
+        nxt = getattr(cur, "head", None)
+        if nxt is None or nxt is cur:
+            break
+        cur = nxt
+        seen += 1
+    return False
+
+
 def has_finite_predicate(root: object) -> bool:
     """True when the clause has a finite (or imperative) predicate.
 
@@ -48,6 +97,49 @@ def has_finite_predicate(root: object) -> bool:
     for child in children:
         dep = getattr(child, "dep_", "")
         if dep in _FINITE_AUX_DEPS and _token_is_finite(child):
+            return True
+    return False
+
+
+def sentence_has_finite_predicate(sent: object) -> bool:
+    """True when the sentence has a usable finite main predicate.
+
+    Extends :func:`has_finite_predicate` to quiet spaCy mistags common in
+    narrative prose without silencing true fragments:
+
+    - Clear finite tags (VBD/VBZ/VBP/MD) outside marked subordinates
+    - VBN with its own nsubj (mistagged narrative past: \"A pop echoed.\")
+    - Noun ROOT + unmarked acl past (SVO misparsed as NP: \"The track skidded.\")
+
+    Marked subordinates (``advcl`` + mark, ``relcl``) stay ignored so fixtures
+    like \"A rough chatter … as he lifted …\" remain loud.
+    """
+    root = getattr(sent, "root", None)
+    if root is not None and has_finite_predicate(root):
+        return True
+
+    for tok in sent:
+        tag = getattr(tok, "tag_", "")
+        pos = getattr(tok, "pos_", "")
+        if _ignore_as_main_finite(tok):
+            continue
+        if tag in _CLEAR_FINITE_TAGS and pos in {"VERB", "AUX"}:
+            return True
+        if pos == "VERB" and tag == "VBN":
+            if any(
+                getattr(c, "dep_", "") in _SUBJECT_DEPS
+                for c in getattr(tok, "children", ())
+            ):
+                return True
+
+    if root is not None and getattr(root, "pos_", "") in {"NOUN", "PROPN"}:
+        for child in getattr(root, "children", ()):
+            if getattr(child, "dep_", "") != "acl":
+                continue
+            if getattr(child, "tag_", "") not in _PAST_LIKE_TAGS:
+                continue
+            if _has_mark_child(child):
+                continue
             return True
     return False
 
@@ -92,10 +184,11 @@ def detect_missing_predicates(
     require_period: bool = True,
     non_prose: list | None = None,
 ) -> list[MissingPredicateHit]:
-    """No finite predicate (ROOT + aux/auxpass/cop rule) + v1 quiet gates.
+    """No usable finite main predicate + quiet gates.
 
-    Empty if spaCy unavailable. Editor and GCE both call this. Do not expose
-    a separate "raw loud ROOT" path for product seats.
+    Uses :func:`sentence_has_finite_predicate` (root/aux plus spaCy-mistag
+    guards). Empty if spaCy unavailable. Editor and GCE both call this. Do
+    not expose a separate \"raw loud ROOT\" path for product seats.
     """
     from ghostcopyeditor.checkers.regions import (
         find_double_quote_spans,
@@ -136,8 +229,11 @@ def detect_missing_predicates(
                 continue
             if require_period and not _period_terminated(stripped):
                 continue
+            # Drop quote-only junk spans glued onto the next sentence start.
+            if _LEADING_QUOTE_JUNK_RE.match(stripped):
+                continue
             root = sent.root
-            if has_finite_predicate(root):
+            if sentence_has_finite_predicate(sent):
                 continue
             hits.append(
                 MissingPredicateHit(
@@ -160,4 +256,5 @@ __all__ = [
     "MissingPredicateHit",
     "detect_missing_predicates",
     "has_finite_predicate",
+    "sentence_has_finite_predicate",
 ]
