@@ -12,6 +12,8 @@ def test_system_prompt_asks_for_json_array() -> None:
     assert "JSON" in GARBLED_SYSTEM_PROMPT
     assert "excerpt" in GARBLED_SYSTEM_PROMPT
     assert "suggestion" in GARBLED_SYSTEM_PROMPT
+    assert "finite verb" in GARBLED_SYSTEM_PROMPT
+    assert "missing predicate" in GARBLED_SYSTEM_PROMPT.lower() or "missing predicate" in GARBLED_SYSTEM_PROMPT
 
 
 def test_user_prompt_wraps_chapter() -> None:
