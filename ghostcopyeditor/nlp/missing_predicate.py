@@ -47,16 +47,6 @@ def _has_mark_child(token: object) -> bool:
     return False
 
 
-def _is_marked_subordinate(token: object) -> bool:
-    """True for relative clauses and marked adverbial subordinates (as/while/when)."""
-    dep = getattr(token, "dep_", "")
-    if dep == "relcl":
-        return True
-    if dep == "advcl" and _has_mark_child(token):
-        return True
-    return False
-
-
 def _ignore_as_main_finite(token: object) -> bool:
     """Skip finites that live in subordinate / absolute clauses.
 
