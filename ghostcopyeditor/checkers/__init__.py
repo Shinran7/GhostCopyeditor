@@ -15,6 +15,7 @@ from ghostcopyeditor.checkers.mechanics import MechanicsChecker
 from ghostcopyeditor.checkers.missing_predicate import MissingPredicateChecker
 from ghostcopyeditor.checkers.rhythm import RhythmChecker
 from ghostcopyeditor.checkers.style import StyleChecker
+from ghostcopyeditor.checkers.weakeners import WeakenerChecker
 from ghostcopyeditor.checkers.wordiness import WordinessChecker
 from ghostcopyeditor.config import GhostCopyeditorConfig
 from ghostcopyeditor.ingestion import Chapter
@@ -30,7 +31,7 @@ class Checker(Protocol):
 
 
 # Stable order: mechanics → missing_predicate → style → anachronism → wordiness
-# → echo → rhythm.
+# → echo → rhythm → weakeners.
 CHECKER_REGISTRY: tuple[Checker, ...] = (
     MechanicsChecker(),
     MissingPredicateChecker(),
@@ -39,6 +40,7 @@ CHECKER_REGISTRY: tuple[Checker, ...] = (
     WordinessChecker(),
     EchoChecker(),
     RhythmChecker(),
+    WeakenerChecker(),
 )
 
 
@@ -59,6 +61,7 @@ __all__ = [
     "MissingPredicateChecker",
     "RhythmChecker",
     "StyleChecker",
+    "WeakenerChecker",
     "WordinessChecker",
     "apply_findings",
     "apply_to_chapter",

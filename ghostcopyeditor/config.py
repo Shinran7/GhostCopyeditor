@@ -47,6 +47,11 @@ class GhostCopyeditorConfig(BaseModel):
     rhythm_short_words: int = 14
     rhythm_flat_variety: int = 62
     rhythm_min_scene_sentences: int = 20
+    weakeners_enabled: bool = True
+    weak_qualifier_per_1000: float = 3.0
+    weak_filter_per_1000: float = 3.0
+    weak_tag_adverb_per_1000: float = 1.0
+    weak_min_scene_words: int = 300
     skip_rules: list[str] = []
 
     @classmethod
@@ -152,6 +157,13 @@ class GhostCopyeditorConfig(BaseModel):
             "# Flag a scene whose variety score (0-100) is below this",
             f"rhythm_flat_variety: {_fmt(self.rhythm_flat_variety)}",
             f"rhythm_min_scene_sentences: {_fmt(self.rhythm_min_scene_sentences)}",
+            "",
+            "# Weakeners: flag only when a scene is over the per-1,000-word limit",
+            f"weakeners_enabled: {_fmt(self.weakeners_enabled)}",
+            f"weak_qualifier_per_1000: {_fmt(self.weak_qualifier_per_1000)}",
+            f"weak_filter_per_1000: {_fmt(self.weak_filter_per_1000)}",
+            f"weak_tag_adverb_per_1000: {_fmt(self.weak_tag_adverb_per_1000)}",
+            f"weak_min_scene_words: {_fmt(self.weak_min_scene_words)}",
             "",
             "# Drop findings whose rule id starts with any of these (e.g. echo.)",
             f"skip_rules: {_fmt(self.skip_rules)}",
