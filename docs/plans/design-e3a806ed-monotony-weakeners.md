@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Date** | 2026-11-10 |
-| **Status** | Approved (rev 2) |
+| **Status** | Done (slices 0–7 shipped on master) |
 | **Issue** | Shinran7/GhostCopyeditor #2 |
 | **Primary repo** | `C:\Users\shinr\Projects\GhostCopyeditor` |
 | **Consumer** | `C:\Users\shinr\Projects\Autonomicon` (code freeze: no changes there yet) |

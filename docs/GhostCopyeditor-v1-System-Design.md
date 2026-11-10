@@ -309,6 +309,8 @@ class Category(StrEnum):
     STYLE = "style"
     WORDINESS = "wordiness"
     ECHO = "echo"
+    RHYTHM = "rhythm"        # syntactic monotony (#2)
+    WEAKENER = "weakener"    # density-gated weak words (#2)
 
 
 class Severity(StrEnum):
@@ -333,6 +335,9 @@ class Location:
     char_start: int | None = None   # see coordinate space below
     char_end: int | None = None     # exclusive end (Python slice semantics)
     excerpt: str = ""          # short quote for humans / Autonomicon
+    scene: int | None = None         # 1-based scene (split on ``---``) (#2)
+    sentence_start: int | None = None  # sentence span holding the hit (#2)
+    sentence_end: int | None = None
 
 
 @dataclass
@@ -527,6 +532,35 @@ echo_phrase_max_gap: 2
 
 # Wordiness: enable built-in phrase map
 wordiness_enabled: true
+
+# Rhythm notes (#2): syntactic monotony
+rhythm_enabled: true
+rhythm_opener_run: 3          # same opening word N sentences in a row
+rhythm_shape_run: 4           # N short subject-first sentences in a row
+rhythm_short_words: 14        # "short" for shape runs
+rhythm_flat_variety: 62       # flat_scene below this variety score
+rhythm_min_scene_sentences: 20
+
+# Weakener notes (#2): per scene, per 1,000 words
+weakeners_enabled: true
+weak_qualifier_per_1000: 3.0
+weak_filter_per_1000: 3.0
+weak_tag_adverb_per_1000: 1.0
+weak_min_scene_words: 300
+
+# Per-book style guide (#2)
+style_guide:
+  banned: []                  # e.g. ["a beat"]
+  pet_words: {}               # e.g. {"suddenly": 2}
+  spellings: {}               # e.g. {"grey": "gray"}; applyable
+
+# Checked rewrites (#2): needs the LLM engine on
+rewrite_enabled: true
+rewrite_max_per_chapter: 8
+rewrite_length_band: 0.4
+
+# Drop findings whose rule_id starts with any of these
+skip_rules: []
 ```
 
 `GhostCopyeditorConfig` defaults match the YAML above (`typesafe_enabled=False`, `llm_enabled=False`), twinning `GhostreaderConfig.typesafe_enabled = False`. Checked-in operator configs may turn engines on after secrets exist. `init` panel text must mention: add keys to `secrets/llm.env`, then `ghostcopyeditor config set typesafe_enabled true` / `llm_enabled true` (or CLI `--typesafe` / `--model`).
@@ -587,6 +621,30 @@ Registry runs all checkers; order is stable and documented.
 
 **Zipf uncommon-noun thrash (`#285` / `8c6c4513`):** owned by GhostReader analyze (`thrash_findings`) and Autonomicon mid-stream thrash combat / EoB skill. GhostCopyeditor does **not** gain a Zipf thrash rule or new `Category`. `echo.local_repeat` remains any-content-word window echo; `echo.phrase_dup` remains close phrase stutter.
 | `style.tense_hint` | style | defer | no | Leave tense judgment to TypeSafe `copy.style_consistency` |
+
+#### Additions for issue #2 (monotony, weakeners, style guide)
+
+Checker order: Mechanics, MissingPredicate, Style, Anachronism, Wordiness, Echo, Rhythm, Weakener, StyleGuide.
+
+| `rule_id` | Category | Severity | Applyable? | Notes |
+|-----------|----------|----------|------------|-------|
+| `rhythm.same_opener_run` | rhythm | suggestion | no | Same opening word in `rhythm_opener_run`+ narration sentences in a row |
+| `rhythm.shape_run` | rhythm | suggestion | no | `rhythm_shape_run`+ short subject-first sentences in a row (spaCy) |
+| `rhythm.flat_scene` | rhythm | warning | no | Scene variety score < `rhythm_flat_variety` (scenes with enough narration) |
+| `weak.qualifier` | weakener | suggestion | no | very / just / quite …; only when the scene rate is over the limit |
+| `weak.filter_word` | weakener | suggestion | no | saw / felt / noticed … after a subject; narration only |
+| `weak.tag_adverb` | weakener | suggestion | no | `said quietly`; outside quotes on dialogue lines |
+| `guide.banned` | style | warning | no | Book's banned phrases |
+| `guide.pet_word` | style | suggestion | no | All hits when the chapter count is over the phrase's limit |
+| `guide.spelling` | style | suggestion | yes | House spelling; keeps case; lexicon terms dropped |
+
+Dialogue and scene breaks end rhythm runs. The variety score (0–100, `nlp/sentence_shape.py`) mixes length spread, mean length, top-opener share, subject-first share, and multi-clause share. Calibration (85 Autonomicon scenes vs. public-domain prose): subject-first share 0.76 vs. 0.50, variety 70 vs. 91; 62 is about the 15th percentile of Autonomicon scenes. Weakener limits sit above both corpora, so they act as a regression guard.
+
+Rhythm and weakener findings go to `may_look` (notes), not the action list, unless a checked rewrite is attached.
+
+**Checked rewrites** (`llm_engine/rewrite.py`): with the LLM engine on, one call per scene asks for up to two rewrites of each flagged span (widened to whole sentences; capped at `rewrite_max_per_chapter`). GCE keeps the first candidate that passes all checks: flag gone, no new deterministic problem, scene variety not lower, names and book terms unchanged, quoted dialogue unchanged, paragraph breaks unchanged, length within `rewrite_length_band`. A kept rewrite sets `suggestion`, `metadata.rewrite_checked`, `rewrite_start` / `rewrite_end` / `rewrite_original`, and moves the finding to the action list. Failed candidates are listed in `metadata.rewrite_rejected`. Rewrites are never applyable.
+
+**Library API** (`ghostcopyeditor.api`): `check_chapter(text, *, chapter_number, path, config, llm, typesafe_client, story_dir, skip_rules, rewrites)` returns `ChapterCheck` (findings, may_look, scenes, warnings, `api_version`). Companion reports also carry per-scene profiles in `chapters[0].scenes`, each with a `rhythm` metrics block. Autonomicon routing: `docs/autonomicon-handoff.md`.
 
 \* Applyable rules must set `applyable=True`, `replacement=…`, `metadata.expected_old=…`, and exact `char_start`/`char_end`. If span cannot be proven unique or re-verify would fail, mark non-applyable.
 
