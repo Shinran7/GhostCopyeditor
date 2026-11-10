@@ -34,7 +34,11 @@ result.api_version  # 1; bumped only on a breaking change
 
 - Deterministic checks only by default: no API keys, no network.
 - Pass `llm=<LangChain chat model>` and/or `typesafe_client=<AsyncTypeSafeClient>`
-  to run those engines.
+  to run those engines. `llm` runs the garbled-text check and the hollow-imagery judge.
+- Passage rewrites: pass `rewrites=True` and `role_llms=RoleLLMs(rewrite_writer=...,
+  rewrite_checker=...)` (from `ghostcopyeditor.llm`; `get_role_llms(cfg)` builds them
+  from `config.yaml`). The writer should be the book's own writing model (Sol today).
+  Without both, rewrites are skipped with a warning.
 - Safe from sync code and from inside a running event loop.
   `check_chapter_async` is the async form.
 - Each finding's `location` carries `char_start`/`char_end`, `scene` (1-based),
@@ -51,8 +55,14 @@ result.api_version  # 1; bumped only on a breaking change
 | `guide.banned`    | must-look          | Author's own banned list                   |
 | `rhythm.`         | soft / punch list  | Craft note; needs a rewrite, not a fix     |
 | `weak.`           | soft / punch list  | Density note; only fires over the limit    |
+| `hollow.`         | soft / punch list  | Decorative line that means nothing         |
+| `rewrite.passage` | action list        | Checked passage edit; review before use    |
 | `echo.`           | skip (Autonomicon has `stilted_echo`) |                         |
 
-A finding with `metadata.rewrite_checked = true` carries a rewrite that GCE
-re-checked (flag gone, no new problems, names and dialogue unchanged). Those
-sit in the action list as `suggestion` severity, never auto-applied.
+A `rewrite.passage` finding (`metadata.rewrite_checked = true`) replaces
+`char_start`..`char_end` (one or two paragraphs) with `suggestion`. GCE checked
+it twice: first its own checks (dialogue word for word, names, paragraph count,
+length, no new problems), then a checker model that confirmed no literal fact
+was lost, changed, or added. `metadata.facts` lists the facts the checker
+verified. `metadata.wording` lists what the edit gave up (images, rhythm).
+Never auto-applied.

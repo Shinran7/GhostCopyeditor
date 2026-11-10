@@ -199,6 +199,8 @@ Lexicon and cast protection run after this check, as they already do for other c
 
 This runs only when the LLM is on (not `--no-llm`). It is off by default in `api.check_chapter`. Update `COST-ESTIMATE.md` with the extra calls.
 
+**Superseded (2026-11-10).** Sentence rewrites from one analysis model shuffled synonyms and added hollow images. Slices 8 to 10 replace this slice.
+
 ### Slice 7. Docs
 
 - Update `docs/GhostCopyeditor-v1-System-Design.md`: new categories, new rules, and the `scenes` report block.
@@ -207,11 +209,23 @@ This runs only when the LLM is on (not `--no-llm`). It is off by default in `api
   - `rhythm.*` and `weak.*` go to Autonomicon's soft or punch list.
   - `guide.banned` goes to must-look.
 
+### Slice 8. Hollow-imagery notes
+
+Code finds candidate sentences (narrow phrases, closing appositive tags, objects with a mind). One LLM judge call per chapter confirms them. Notes only (`hollow.image`, `may_look`).
+
+### Slice 9. Per-job models
+
+`hollow_judge`, `rewrite_writer`, `rewrite_checker` in config, each with model, temperature, max_tokens, reasoning_effort. The model that analyzes is not the model that writes. Rewrites use the book's writing model (Sol) or another proven prose model.
+
+### Slice 10. Checked passage rewrites
+
+The unit is one or two flagged paragraphs, with three paragraphs of context, the cast, and the lexicon. The writer edits for purpose and may cut. Then GCE's own checks run, then a checker model lists literal facts (kept / changed / lost) and facts added, apart from wording notes. Any literal fact change rejects the edit. Each kept edit is one `rewrite.passage` finding. Live result: 4 of 7 kept on Autonomicon chapter 1. Details: system design, "Checked passage rewrites".
+
 ---
 
 ## Decisions (locked 2026-11-10)
 
-1. **Notes list by default.** Rhythm and weakener findings go in the `may_look` notes list, like echo. A finding moves to the main action list when a checked rewrite is attached.
+1. **Notes list by default.** Rhythm, weakener, and hollow findings go in the `may_look` notes list, like echo. Checked edits are separate `rewrite.passage` findings in the action list (revised with Slice 10).
 2. **Calibration corpus.** Recent chapters under `Autonomicon\stories\`. Most show the monotony. Two public-domain chapters serve only as a sanity check.
 3. **Rewrites on by default** in companion and analyze, capped at 8 per chapter. `--no-llm` turns them off. The library function keeps them off unless asked.
 
@@ -222,4 +236,5 @@ This runs only when the LLM is on (not `--no-llm`). It is off by default in `api
 - **spaCy tagging errors.** Wrong tags can miscount subjects and clauses. The scene-level numbers absorb single errors. The run rules need 3 to 4 sentences in a row, which also limits noise.
 - **Threshold drift across models.** Sol today, another model later. Keep every limit in config, and keep the raw numbers in `metadata`.
 - **Freeze breakage.** This is covered by Slice 0 and the freeze rule.
-- **Rewrites that make things flatter.** The variety-score check in Slice 6 throws these out.
+- **Rewrites that make things flatter.** Sol cuts decoration hard and can go flat. The checker's `wording` notes say what was lost; the caller decides.
+- **Continuity.** The book reads its own earlier chapters, so a lost fact is the worst failure. The checker rejects any literal fact change; false rejections are the accepted cost.

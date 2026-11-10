@@ -554,10 +554,17 @@ style_guide:
   pet_words: {}               # e.g. {"suddenly": 2}
   spellings: {}               # e.g. {"grey": "gray"}; applyable
 
-# Checked rewrites (#2): needs the LLM engine on
+# Hollow imagery (#2): code finds candidates, an LLM judges (notes only)
+hollow_enabled: true
+hollow_max_candidates: 80
+hollow_judge: {model: null, temperature: null, max_tokens: null, reasoning_effort: null}
+
+# Checked passage rewrites (#2): need both models set
 rewrite_enabled: true
 rewrite_max_per_chapter: 8
-rewrite_length_band: 0.4
+rewrite_length_band: 0.4       # edit may grow at most 40%; may shrink to 25%
+rewrite_writer: {model: null, temperature: null, max_tokens: null, reasoning_effort: null}
+rewrite_checker: {model: null, temperature: null, max_tokens: null, reasoning_effort: null}
 
 # Drop findings whose rule_id starts with any of these
 skip_rules: []
@@ -637,14 +644,29 @@ Checker order: Mechanics, MissingPredicate, Style, Anachronism, Wordiness, Echo,
 | `guide.banned` | style | warning | no | Book's banned phrases |
 | `guide.pet_word` | style | suggestion | no | All hits when the chapter count is over the phrase's limit |
 | `guide.spelling` | style | suggestion | yes | House spelling; keeps case; lexicon terms dropped |
+| `hollow.image` | hollow | suggestion | no | LLM judge confirms a hollow figure among code-found candidates |
+| `rewrite.passage` | rewrite | suggestion | no | Checked passage edit (writer + continuity checker) |
+| `rewrite.passage` | rewrite | suggestion | no | Checked passage edit (writer + continuity checker) |
 
 Dialogue and scene breaks end rhythm runs. The variety score (0–100, `nlp/sentence_shape.py`) mixes length spread, mean length, top-opener share, subject-first share, and multi-clause share. Calibration (85 Autonomicon scenes vs. public-domain prose): subject-first share 0.76 vs. 0.50, variety 70 vs. 91; 62 is about the 15th percentile of Autonomicon scenes. Weakener limits sit above both corpora, so they act as a regression guard.
 
-Rhythm and weakener findings go to `may_look` (notes), not the action list, unless a checked rewrite is attached.
+Rhythm, weakener, and hollow findings go to `may_look` (notes). Checked `rewrite.passage` edits go to the action list.
 
-**Checked rewrites** (`llm_engine/rewrite.py`): with the LLM engine on, one call per scene asks for up to two rewrites of each flagged span (widened to whole sentences; capped at `rewrite_max_per_chapter`). GCE keeps the first candidate that passes all checks: flag gone, no new deterministic problem, scene variety not lower, names and book terms unchanged, quoted dialogue unchanged, paragraph breaks unchanged, length within `rewrite_length_band`. A kept rewrite sets `suggestion`, `metadata.rewrite_checked`, `rewrite_start` / `rewrite_end` / `rewrite_original`, and moves the finding to the action list. Failed candidates are listed in `metadata.rewrite_rejected`. Rewrites are never applyable.
+**Hollow imagery** (`nlp/hollow.py`, `llm_engine/hollow.py`): code finds narration sentences with a suspect shape (`narrow`: "X's idea of", "filled the silence", ", a X rather than"; `tail`: a closing appositive tag; `mind`: an inanimate subject of a mind verb, via spaCy). Candidates alone are not findings, because the broad shapes match good prose too. One judge call per chapter (the chapter for context, plus up to `hollow_max_candidates` numbered lines) marks each line HOLLOW or WORKS and names the hollow words. HOLLOW lines become `hollow.image` notes. The judge uses `hollow_judge` when its model is set, else the main model.
 
-**Library API** (`ghostcopyeditor.api`): `check_chapter(text, *, chapter_number, path, config, llm, typesafe_client, story_dir, skip_rules, rewrites)` returns `ChapterCheck` (findings, may_look, scenes, warnings, `api_version`). Companion reports also carry per-scene profiles in `chapters[0].scenes`, each with a `rhythm` metrics block. Autonomicon routing: `docs/autonomicon-handoff.md`.
+**Per-job models** (`config.ModelSettings`, `llm.get_role_llms`): `hollow_judge`, `rewrite_writer`, and `rewrite_checker` each take `model`, `temperature`, `max_tokens`, `reasoning_effort`. With settings, `get_llm` uses only those values, not the top-level `temperature` / `max_tokens`. `reasoning_effort` reaches OpenAI, Fireworks, and Gemini (as `thinking_level`); Claude still drops `temperature`. Analysis and writing are different jobs. The main model (e.g. Gemini Flash) can judge, but it cannot write prose. The writer should be the book's own writing model (for Autonomicon, Sol today) or another model with proven prose. A job model that cannot start is skipped, with a report warning.
+
+**Checked passage rewrites** (`llm_engine/rewrite.py`): the unit is a paragraph that holds a `rhythm.shape_run`, `rhythm.same_opener_run`, `weak.*`, or `hollow.*` note. Flagged neighbours pair up (two paragraphs at most). Most-flagged units go first, capped at `rewrite_max_per_chapter`; headings are skipped. Rewrites run only when both `rewrite_writer` and `rewrite_checker` are set (else a warning). Per unit:
+
+1. **Writer.** It gets the cast, book terms, three paragraphs before and after, the passage, and the notes (as hints, not orders). It states the passage's purpose, then edits. It may cut, merge, and reorder, and the edit may be shorter. Reply: `{purpose, facts, cuts, edit}`.
+2. **GCE checks.** Not empty and not unchanged; at most `1 + rewrite_length_band` times the original word count and at least 25% of it; quoted dialogue word for word; the same set of book terms and cast names present; the same paragraph count; no new deterministic finding in the passage (strict config, no density gates).
+3. **Checker.** It gets before / original / edited / after and returns `facts` (each `kept`, `changed`, or `lost`, and tagged `literal`), `added`, `after_ok`, and `wording`. A literal fact changed or lost, any added fact, a broken AFTER, or no literal facts listed rejects the edit. Figurative items (images, narrator judgement, tone) that the edit dropped become wording notes, so cutting a hollow image never fails the gate.
+
+A kept edit is one `rewrite.passage` finding: `suggestion` is the edit; metadata has `rewrite_checked`, `rewrite_start` / `rewrite_end` / `rewrite_original`, `purpose`, `cuts`, `facts`, `wording`, `notes`, `target_rules`. On rejection, the target notes get `metadata.rewrite_rejected` (reasons) and `rewrite_rejected_edit` (the draft, when there was one). Edits are never applyable. Continuity is the hard rule: a false rejection costs one suggestion, but a false acceptance can break a book that reads its own earlier chapters.
+
+Live check (2026-11-10; Autonomicon chapter 1; Sol writer at temperature 1, effort low; Sonnet 5.5 checker): 4 of 7 passages kept, every literal fact intact. The kept edits cut hollow lines ("the harbor's idea of supper", "a post rather than a verdict"). Before the `literal` tag, the checker counted those images as facts, and only 1 or 2 of 8 edits passed.
+
+**Library API** (`ghostcopyeditor.api`): `check_chapter(text, *, chapter_number, path, config, llm, typesafe_client, story_dir, skip_rules, rewrites, role_llms)` returns `ChapterCheck` (findings, may_look, scenes, warnings, `api_version`). Companion reports also carry per-scene profiles in `chapters[0].scenes`, each with a `rhythm` metrics block. Autonomicon routing: `docs/autonomicon-handoff.md`.
 
 \* Applyable rules must set `applyable=True`, `replacement=…`, `metadata.expected_old=…`, and exact `char_start`/`char_end`. If span cannot be proven unique or re-verify would fail, mark non-applyable.
 
