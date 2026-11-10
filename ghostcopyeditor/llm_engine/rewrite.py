@@ -1,28 +1,30 @@
-"""Checked rewrites for rhythm and weakener notes.
+"""Checked passage rewrites for paragraphs with rhythm, weakener, or hollow notes.
 
-For each scene with notes, one LLM call asks for up to two rewrites per
-flagged span. GCE then checks every candidate with its own deterministic
-checks and keeps the first one that passes:
+The unit is one or two paragraphs. Two models do the work:
 
-- the original flag is gone,
-- no new problem appears in the span,
-- the scene's variety score does not drop,
-- book terms and cast names are unchanged,
-- quoted dialogue is unchanged, word for word,
-- paragraph breaks are unchanged,
-- length stays within the configured band (default ±40%).
+- the **writer** (a model that writes good prose, e.g. the book's own
+  writing model) decides what the passage is for and edits it. It may cut,
+  merge, and reorder; the edit may be shorter.
+- the **checker** compares original and edit for continuity: every fact
+  kept, nothing changed, lost, or added. Wording and tone notes are kept
+  apart from facts and never reject an edit.
 
-A kept rewrite goes into ``suggestion`` with ``metadata.rewrite_checked``.
+Before the checker runs, GCE's own checks must pass: quoted dialogue word
+for word, the same book terms and cast names present, the same paragraph
+count, length no more than the band over (and at least a quarter of) the
+original, and no new deterministic problem in the passage.
+
+A kept edit becomes one ``rewrite.passage`` finding (``metadata.rewrite_checked``).
 It is never applyable: Autonomicon (or the author) decides.
 """
 
 from __future__ import annotations
 
+import asyncio
 import dataclasses
 import json
 import logging
 import re
-from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
 
@@ -31,124 +33,153 @@ from ghostcopyeditor.config import GhostCopyeditorConfig
 from ghostcopyeditor.ingestion import Chapter
 from ghostcopyeditor.lexicon import Lexicon
 from ghostcopyeditor.llm import message_text
-from ghostcopyeditor.models.finding import Finding, Severity
+from ghostcopyeditor.models.finding import (
+    Category,
+    Engine,
+    Finding,
+    Severity,
+    location_from_span,
+)
 
 logger = logging.getLogger(__name__)
 
-TARGET_PREFIXES = ("rhythm.shape_run", "rhythm.same_opener_run", "weak.")
+TARGET_PREFIXES = ("rhythm.shape_run", "rhythm.same_opener_run", "weak.", "hollow.")
+CONTEXT_PARAGRAPHS = 3
+_MIN_SHARE = 0.25  # an edit may cut down to a quarter of the original words
+_CONCURRENCY = 4
+_PARA_RE = re.compile(r"[^\n]+(?:\n[^\n]+)*")
 _QUOTED_RE = re.compile(r"\"[^\"]*\"|“[^”]*”")
 _WORD_RE = re.compile(r"[A-Za-z0-9']+")
-_PARA_BREAK_RE = re.compile(r"\n[ \t\r]*\n")
 
-REWRITE_SYSTEM_PROMPT = """\
-You are a fiction line editor. Each target is a passage from one scene that \
-reads monotonous (same sentence shape or opening again and again) or leans \
-on weak words (very, just, saw, felt, said quietly).
+WRITER_SYSTEM_PROMPT = """\
+You are the line editor on a novel. You get one passage (one or two \
+paragraphs) with the text around it, and the copy editor's notes on it.
 
-Rewrite each target so the sentences vary in length, opening, and structure. \
-Combine or split sentences where that helps. Keep the meaning, the facts, \
-the point of view, and the tense. Keep every name and every book term. Keep \
-quoted dialogue exactly as written. Keep paragraph breaks where they are. \
-Do not add new events, images, or metaphors. Stay close to the original \
-length.
+First decide what the passage is for: what the reader must know, see, or \
+feel when it ends. Then edit it so the prose does that job well. The notes \
+are hints, not orders; fix the passage, not just the flagged words.
 
-Return ONLY a JSON array, no fences, one object per target:
-  {"id": "<target id>", "candidates": ["<rewrite 1>", "<rewrite 2>"]}
-Give at most two candidates per target.
+You may cut, merge, split, and reorder sentences. You may cut whole lines \
+that do no work: decoration, images that sound literary but mean nothing, \
+beats that repeat each other, strings of sentences about what did not \
+happen. The edit may be shorter than the original. Do not swap words for \
+synonyms to look busy. If the passage already works, change little.
+
+Continuity is the hard rule. This book is written by an automated system \
+that reads its own earlier chapters, so every fact a later page might rely \
+on must survive: who is present, who does what, objects and their state, \
+places, times, numbers, what each character knows or decides, and any \
+detail the surrounding text refers back to or sets up. Do not add events, \
+objects, or knowledge. Keep names, book terms, pronouns, point of view, and \
+tense. Keep quoted dialogue word for word. Keep the paragraph count.
+
+Return ONLY JSON, no fences:
+{"purpose": "<one plain sentence>",
+ "facts": ["<each fact the passage establishes that must survive>"],
+ "cuts": ["<what you cut or changed, and why>"],
+ "edit": "<the edited passage>"}
+"""
+
+CHECKER_SYSTEM_PROMPT = """\
+You check continuity for a novel written by an automated system that reads \
+its own earlier chapters. You get an ORIGINAL passage, an EDITED version, \
+and the text before and after it.
+
+1. facts: list every fact the ORIGINAL establishes that later text could \
+rely on: who is present, who does what, objects and their state, places, \
+times, numbers, what characters know or decide, details the surrounding \
+text refers to. For each, say whether the EDIT keeps it, changes it, or \
+loses it. A fact said in other words is kept.
+2. added: facts the EDIT states that the ORIGINAL did not (new events, \
+objects, knowledge, sense details). New wording for an old fact is not an \
+addition.
+3. after_ok: does the AFTER text still read correctly after the EDIT (no \
+reference to something the edit removed)?
+4. wording: notes on wording, tone, rhythm, or imagery. These are not \
+facts; never put them in facts or added.
+
+Return ONLY JSON, no fences:
+{"facts": [{"fact": "...", "status": "kept|changed|lost", "note": "..."}],
+ "added": ["..."],
+ "after_ok": true, "after_note": "...",
+ "wording": ["..."]}
 """
 
 
 @dataclass(frozen=True)
-class _Target:
-    key: str
+class _Unit:
+    """One or two adjacent paragraphs to edit. ``end`` is exclusive."""
+
     start: int
     end: int
-    scene: int
-    rule: str
-    indices: tuple[int, ...]
+    first: int  # paragraph index
+    last: int
+    indices: tuple[int, ...]  # target findings inside
 
 
-def _span_for(finding: Finding, sentences: list[Any]) -> tuple[int, int] | None:
-    from ghostcopyeditor.nlp.sentences import sentence_index_at
-
-    loc = finding.location
-    if loc.char_start is None or loc.char_end is None:
-        return None
-    first = sentence_index_at(sentences, loc.char_start)
-    last = sentence_index_at(sentences, max(loc.char_end - 1, loc.char_start))
-    if first is None or last is None:
-        return None
-    return sentences[first].start, sentences[last].end
+def paragraph_spans(text: str) -> list[tuple[int, int]]:
+    """(start, end) of each paragraph: runs of non-blank lines."""
+    return [m.span() for m in _PARA_RE.finditer(text)]
 
 
-def _targets(
-    findings: list[Finding], chapter: Chapter, limit: int
-) -> list[_Target]:
-    from ghostcopyeditor.checkers.regions import scene_number_at, scene_spans
-    from ghostcopyeditor.nlp.sentences import prose_sentences
+def _is_prose(paragraph: str) -> bool:
+    stripped = paragraph.strip()
+    return bool(_WORD_RE.search(stripped)) and not stripped.startswith("#")
 
-    sentences = prose_sentences(chapter.content)
-    scenes = scene_spans(chapter.content)
-    by_span: dict[tuple[int, int], list[int]] = defaultdict(list)
-    rules: dict[tuple[int, int], str] = {}
-    spans: list[tuple[tuple[int, int], int, str]] = []
+
+def _units(findings: list[Finding], chapter: Chapter, limit: int) -> list[_Unit]:
+    """Group target findings by paragraph, merge flagged neighbours in pairs."""
+    paras = paragraph_spans(chapter.content)
+    hits: dict[int, list[int]] = {}
     for idx, finding in enumerate(findings):
-        rule = finding.rule_id or ""
-        if not rule.startswith(TARGET_PREFIXES):
+        start = finding.location.char_start
+        if start is None or not (finding.rule_id or "").startswith(TARGET_PREFIXES):
             continue
-        span = _span_for(finding, sentences)
-        if span is not None:
-            spans.append((span, idx, rule))
-    # Widest spans first, so a narrower note inside one joins it.
-    spans.sort(key=lambda row: (row[0][0] - row[0][1], row[0][0]))
-    for span, idx, rule in spans:
-        # A span inside an already-claimed span joins it.
-        host = next((s for s in by_span if s[0] <= span[0] and span[1] <= s[1]), None)
-        if host is None:
-            if any(s[0] < span[1] and span[0] < s[1] for s in by_span):
-                continue  # partial overlap: skip rather than rewrite twice
-            host = span
-            rules[host] = rule
-        by_span[host].append(idx)
-    out: list[_Target] = []
-    for n, (span, idxs) in enumerate(sorted(by_span.items())[:limit], start=1):
-        out.append(
-            _Target(
-                key=f"t{n}",
-                start=span[0],
-                end=span[1],
-                scene=scene_number_at(span[0], scenes) or 1,
-                rule=rules[span],
-                indices=tuple(idxs),
-            )
-        )
-    return out
+        para = next((i for i, (s, e) in enumerate(paras) if s <= start < e), None)
+        if para is not None and _is_prose(chapter.content[slice(*paras[para])]):
+            hits.setdefault(para, []).append(idx)
+    units: list[_Unit] = []
+    pending = sorted(hits)
+    while pending:
+        first = pending.pop(0)
+        last = first
+        if pending and pending[0] == first + 1:
+            last = pending.pop(0)
+        idxs = tuple(hits[first] + (hits[last] if last != first else []))
+        units.append(_Unit(paras[first][0], paras[last][1], first, last, idxs))
+    # Most-flagged passages first, then back into reading order.
+    units.sort(key=lambda u: (-len(u.indices), u.start))
+    return sorted(units[:limit], key=lambda u: u.start)
 
 
-def _parse(raw: str) -> dict[str, list[str]]:
+def _context(chapter: Chapter, unit: _Unit) -> tuple[str, str]:
+    paras = paragraph_spans(chapter.content)
+    text = chapter.content
+    lo = max(0, unit.first - CONTEXT_PARAGRAPHS)
+    before = "\n\n".join(text[s:e] for s, e in paras[lo : unit.first])
+    hi = unit.last + 1 + CONTEXT_PARAGRAPHS
+    after = "\n\n".join(text[s:e] for s, e in paras[unit.last + 1 : hi])
+    return before, after
+
+
+def _parse_object(raw: str) -> dict[str, Any] | None:
     from ghostcopyeditor.llm_engine.garbled import _strip_fences
 
     text = _strip_fences(raw)
+    start, end = text.find("{"), text.rfind("}")
+    if start < 0 or end <= start:
+        return None
     try:
-        data = json.loads(text)
+        data = json.loads(text[start : end + 1])
     except json.JSONDecodeError:
-        start, end = text.find("["), text.rfind("]")
-        if start < 0 or end <= start:
-            return {}
-        try:
-            data = json.loads(text[start : end + 1])
-        except json.JSONDecodeError:
-            return {}
-    if not isinstance(data, list):
-        return {}
-    out: dict[str, list[str]] = {}
-    for item in data:
-        if not isinstance(item, dict):
-            continue
-        cands = item.get("candidates")
-        if isinstance(item.get("id"), str) and isinstance(cands, list):
-            out[item["id"]] = [c for c in cands if isinstance(c, str) and c.strip()][:2]
-    return out
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _str_list(value: object) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [str(v).strip() for v in value if str(v).strip()]
 
 
 def _strict_cfg(cfg: GhostCopyeditorConfig) -> GhostCopyeditorConfig:
@@ -176,151 +207,221 @@ def _rules_in(findings: list[Finding], start: int, end: int) -> set[str]:
     return out
 
 
-def _protected_counts(text: str, names: list[str]) -> dict[str, int]:
-    counts: dict[str, int] = {}
-    for name in names:
-        pattern = r"(?<!\w)" + re.escape(name) + r"(?!\w)"
-        counts[name] = len(re.findall(pattern, text, flags=re.IGNORECASE))
-    return counts
+def _names_present(text: str, names: list[str]) -> set[str]:
+    return {
+        name.lower()
+        for name in names
+        if re.search(r"(?<!\w)" + re.escape(name) + r"(?!\w)", text, flags=re.IGNORECASE)
+    }
 
 
-def _scene_variety(text: str, scene: int) -> int | None:
-    from ghostcopyeditor.nlp.sentence_shape import narration_shapes, scene_metrics
-    from ghostcopyeditor.nlp.sentences import prose_sentences
-
-    shapes = narration_shapes([s for s in prose_sentences(text) if s.scene == scene])
-    value = scene_metrics(shapes)["variety"]
-    return value if isinstance(value, int) else None
-
-
-def verify_candidate(
+def verify_edit(
     chapter: Chapter,
-    target: _Target,
-    candidate: str,
+    unit: _Unit,
+    edit: str,
     cfg: GhostCopyeditorConfig,
     protected: list[str],
     before: list[Finding],
 ) -> str | None:
-    """Return None when *candidate* passes, else the first failed check."""
+    """GCE's own checks. None when *edit* passes, else the failed check."""
     from ghostcopyeditor.checkers import run_deterministic_checkers
 
     text = chapter.content
-    original = text[target.start : target.end]
-    candidate = candidate.strip()
+    original = text[unit.start : unit.end]
+    edit = edit.strip()
     old_words = len(_WORD_RE.findall(original))
-    new_words = len(_WORD_RE.findall(candidate))
-    band = cfg.rewrite_length_band
-    if not old_words or abs(new_words - old_words) > band * old_words:
+    new_words = len(_WORD_RE.findall(edit))
+    if not new_words:
+        return "empty"
+    if new_words > (1 + cfg.rewrite_length_band) * old_words or new_words < _MIN_SHARE * old_words:
         return "length"
-    if _QUOTED_RE.findall(original) != _QUOTED_RE.findall(candidate):
+    if _QUOTED_RE.findall(original) != _QUOTED_RE.findall(edit):
         return "dialogue"
-    if len(_PARA_BREAK_RE.findall(original)) != len(_PARA_BREAK_RE.findall(candidate)):
+    if len(paragraph_spans(original)) != len(paragraph_spans(edit)):
         return "paragraphs"
-    if _protected_counts(original, protected) != _protected_counts(candidate, protected):
+    if _names_present(original, protected) != _names_present(edit, protected):
         return "names"
-    new_text = text[: target.start] + candidate + text[target.end :]
-    new_end = target.start + len(candidate)
-    new_chapter = dataclasses.replace(chapter, content=new_text)
+    new_chapter = dataclasses.replace(chapter, content=text[: unit.start] + edit + text[unit.end :])
     after = run_deterministic_checkers(new_chapter, _strict_cfg(cfg))
-    new_rules = _rules_in(after, target.start, new_end)
-    if target.rule in new_rules:
-        return "flag_remains"
-    old_rules = _rules_in(before, target.start, target.end)
-    if new_rules - old_rules:
+    new_rules = _rules_in(after, unit.start, unit.start + len(edit))
+    if new_rules - _rules_in(before, unit.start, unit.end):
         return "new_problem"
-    old_var = _scene_variety(text, target.scene)
-    new_var = _scene_variety(new_text, target.scene)
-    if old_var is not None and new_var is not None and new_var < old_var:
-        return "variety_drop"
     return None
 
 
-def _user_prompt(
-    chapter: Chapter, scene: int, targets: list[_Target], lexicon: Lexicon,
+def judge_continuity(report: dict[str, Any] | None) -> tuple[list[str], dict[str, Any]]:
+    """Reasons to reject from a checker report, plus its cleaned fields."""
+    if report is None:
+        return ["checker_unreadable"], {}
+    facts = [
+        {
+            "fact": str(f.get("fact") or "").strip(),
+            "status": str(f.get("status") or "").strip().lower(),
+            "note": str(f.get("note") or "").strip(),
+        }
+        for f in report.get("facts") or []
+        if isinstance(f, dict)
+    ]
+    added = _str_list(report.get("added"))
+    after_ok = report.get("after_ok") is not False
+    reasons = [
+        f"fact {f['status'] or 'unclear'}: {f['fact']}" for f in facts if f["status"] != "kept"
+    ]
+    reasons += [f"fact added: {a}" for a in added]
+    if not after_ok:
+        reasons.append(f"after text breaks: {str(report.get('after_note') or '').strip()}")
+    if not facts:
+        reasons.append("checker listed no facts")
+    clean = {"facts": facts, "added": added, "wording": _str_list(report.get("wording"))}
+    return reasons, clean
+
+
+def _writer_prompt(
+    chapter: Chapter,
+    unit: _Unit,
+    notes: list[str],
+    lexicon: Lexicon,
     cast: tuple[CastMember, ...],
 ) -> str:
-    from ghostcopyeditor.checkers.regions import scene_spans
-
-    spans = scene_spans(chapter.content)
-    span = spans[scene - 1] if 0 < scene <= len(spans) else spans[0]
-    parts = [f"Scene {scene} of chapter {chapter.chapter_number}, for context:"]
-    parts.append(chapter.content[span.start : span.end].strip())
-    lex = lexicon.prompt_lines()
-    if lex:
-        parts.append("Book terms (keep exactly):\n" + "\n".join(lex))
+    before, after = _context(chapter, unit)
+    parts: list[str] = []
     names = cast_lines(cast)
     if names:
-        parts.append("Cast (keep names and pronouns):\n" + "\n".join(names))
-    parts.append("Targets:")
-    for t in targets:
-        parts.append(json.dumps({"id": t.key, "problem": t.rule,
-                                 "text": chapter.content[t.start : t.end]}))
+        parts.append("CAST (keep names and pronouns):\n" + "\n".join(names))
+    lex = lexicon.prompt_lines()
+    if lex:
+        parts.append("BOOK TERMS (keep exactly):\n" + "\n".join(lex))
+    parts.append(f"BEFORE:\n{before}")
+    parts.append(f"PASSAGE:\n{chapter.content[unit.start : unit.end]}")
+    parts.append(f"AFTER:\n{after}")
+    parts.append("NOTES:\n" + "\n".join(f"- {n}" for n in notes))
     return "\n\n".join(parts)
 
 
-async def run_checked_rewrites(
+def _checker_prompt(chapter: Chapter, unit: _Unit, edit: str) -> str:
+    before, after = _context(chapter, unit)
+    return (
+        f"BEFORE:\n{before}\n\nORIGINAL:\n{chapter.content[unit.start : unit.end]}"
+        f"\n\nEDITED:\n{edit}\n\nAFTER:\n{after}"
+    )
+
+
+async def _ask(llm: Any, system: str, user: str) -> dict[str, Any] | None:
+    from langchain_core.messages import HumanMessage, SystemMessage
+
+    response = await llm.ainvoke([SystemMessage(content=system), HumanMessage(content=user)])
+    return _parse_object(message_text(getattr(response, "content", response)))
+
+
+async def _edit_unit(
+    chapter: Chapter,
+    unit: _Unit,
+    findings: list[Finding],
+    writer: Any,
+    checker: Any,
+    cfg: GhostCopyeditorConfig,
+    lexicon: Lexicon,
+    cast: tuple[CastMember, ...],
+    protected: list[str],
+    before: list[Finding],
+) -> Finding | list[str]:
+    """The passage finding, or the reasons the edit was rejected."""
+    notes = [findings[i].message for i in unit.indices]
+    try:
+        prompt = _writer_prompt(chapter, unit, notes, lexicon, cast)
+        draft = await _ask(writer, WRITER_SYSTEM_PROMPT, prompt)
+    except Exception:  # noqa: BLE001
+        logger.exception("Rewrite writer failed for chapter %s", chapter.chapter_number)
+        return ["writer_failed"]
+    edit = str((draft or {}).get("edit") or "").strip()
+    if not draft or not edit:
+        return ["writer_unreadable"]
+    original = chapter.content[unit.start : unit.end]
+    if " ".join(edit.split()) == " ".join(original.split()):
+        return ["unchanged"]
+    reason = verify_edit(chapter, unit, edit, cfg, protected, before)
+    if reason:
+        return [reason]
+    try:
+        report = await _ask(checker, CHECKER_SYSTEM_PROMPT, _checker_prompt(chapter, unit, edit))
+    except Exception:  # noqa: BLE001
+        logger.exception("Rewrite checker failed for chapter %s", chapter.chapter_number)
+        return ["checker_failed"]
+    reasons, checked = judge_continuity(report)
+    if reasons:
+        return reasons
+    purpose = str(draft.get("purpose") or "").strip()
+    return Finding(
+        id="",
+        category=Category.REWRITE,
+        severity=Severity.SUGGESTION,
+        message="Passage edit" + (f": {purpose}" if purpose else "."),
+        location=location_from_span(chapter, unit.start, unit.end),
+        engine=Engine.LLM,
+        suggestion=edit,
+        rule_id="rewrite.passage",
+        applyable=False,
+        metadata={
+            "rewrite_checked": True,
+            "rewrite_start": unit.start,
+            "rewrite_end": unit.end,
+            "rewrite_original": original,
+            "purpose": purpose,
+            "cuts": _str_list(draft.get("cuts")),
+            "facts": checked["facts"],
+            "wording": checked["wording"],
+            "notes": notes,
+            "target_rules": sorted({findings[i].rule_id or "" for i in unit.indices}),
+        },
+    )
+
+
+async def run_passage_rewrites(
     chapter: Chapter,
     findings: list[Finding],
-    llm: Any,
+    writer: Any,
+    checker: Any,
     cfg: GhostCopyeditorConfig,
     lexicon: Lexicon | None = None,
     cast: tuple[CastMember, ...] = (),
 ) -> list[Finding]:
-    """Attach checked rewrites to rhythm and weakener findings."""
-    from langchain_core.messages import HumanMessage, SystemMessage
-
+    """Add checked passage edits for flagged paragraphs."""
     from ghostcopyeditor.checkers import run_deterministic_checkers
 
     if not cfg.rewrite_enabled or cfg.rewrite_max_per_chapter <= 0:
         return findings
-    targets = _targets(findings, chapter, cfg.rewrite_max_per_chapter)
-    if not targets:
+    units = _units(findings, chapter, cfg.rewrite_max_per_chapter)
+    if not units:
         return findings
     book = lexicon or Lexicon()
     protected = [*book.forms, *(m.name for m in cast)]
     before = run_deterministic_checkers(chapter, _strict_cfg(cfg))
-    by_scene: dict[int, list[_Target]] = defaultdict(list)
-    for t in targets:
-        by_scene[t.scene].append(t)
+    gate = asyncio.Semaphore(_CONCURRENCY)
+
+    async def one(unit: _Unit) -> Finding | list[str]:
+        async with gate:
+            return await _edit_unit(
+                chapter, unit, findings, writer, checker, cfg, book, cast, protected, before
+            )
+
+    results = await asyncio.gather(*(one(u) for u in units))
     out = list(findings)
-    for scene, scene_targets in sorted(by_scene.items()):
-        messages = [
-            SystemMessage(content=REWRITE_SYSTEM_PROMPT),
-            HumanMessage(content=_user_prompt(chapter, scene, scene_targets, book, cast)),
-        ]
-        try:
-            response = await llm.ainvoke(messages)
-        except Exception:  # noqa: BLE001
-            logger.exception("Rewrite call failed for chapter %s scene %s",
-                             chapter.chapter_number, scene)
+    for unit, result in zip(units, results, strict=True):
+        if isinstance(result, Finding):
+            out.append(result)
             continue
-        candidates = _parse(message_text(getattr(response, "content", response)))
-        for t in scene_targets:
-            reasons: list[str] = []
-            for cand in candidates.get(t.key, []):
-                reason = verify_candidate(chapter, t, cand, cfg, protected, before)
-                if reason is None:
-                    for idx in t.indices:
-                        f = out[idx]
-                        out[idx] = dataclasses.replace(
-                            f,
-                            severity=Severity.SUGGESTION,
-                            suggestion=cand.strip(),
-                            metadata={
-                                **f.metadata,
-                                "rewrite_checked": True,
-                                "rewrite_start": t.start,
-                                "rewrite_end": t.end,
-                                "rewrite_original": chapter.content[t.start : t.end],
-                            },
-                        )
-                    break
-                reasons.append(reason)
-            else:
-                if reasons:
-                    for idx in t.indices:
-                        out[idx].metadata["rewrite_rejected"] = reasons
+        for idx in unit.indices:
+            out[idx] = dataclasses.replace(
+                out[idx], metadata={**out[idx].metadata, "rewrite_rejected": result}
+            )
     return out
 
 
-__all__ = ["REWRITE_SYSTEM_PROMPT", "run_checked_rewrites", "verify_candidate"]
+__all__ = [
+    "CHECKER_SYSTEM_PROMPT",
+    "WRITER_SYSTEM_PROMPT",
+    "judge_continuity",
+    "paragraph_spans",
+    "run_passage_rewrites",
+    "verify_edit",
+]

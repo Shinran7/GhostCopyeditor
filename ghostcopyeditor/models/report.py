@@ -169,7 +169,7 @@ def partition_action_list(
     """Split copyedits from notes.
 
     Echo, rhythm, and weakener notes have no repair, so they must not sit in
-    the list a program revises. A note with a checked rewrite attached
+    the list a program revises. A checked passage edit
     (``metadata.rewrite_checked``) goes to the action list.
     """
     action: list[Finding] = []

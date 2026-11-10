@@ -30,8 +30,9 @@ class ChapterCheck:
     """Result of :func:`check_chapter`.
 
     ``findings`` is the action list (things a program may revise).
-    ``may_look`` holds notes with no automatic fix (echo, rhythm, weakeners
-    without a checked rewrite). ``scenes`` holds per-scene counts.
+    ``may_look`` holds notes with no automatic fix (echo, rhythm, weakeners,
+    hollow imagery). Checked ``rewrite.passage`` edits go to ``findings``.
+    ``scenes`` holds per-scene counts.
     """
 
     findings: list[Finding] = field(default_factory=list)
@@ -91,7 +92,7 @@ async def check_chapter_async(
         llm=llm,
         typesafe_client=typesafe_client,
         typesafe_enabled=typesafe_client is not None,
-        llm_enabled=llm is not None,
+        llm_enabled=llm is not None or role_llms is not None,
         lexicon=lexicon,
         cast=cast,
         role_llms=role_llms,
@@ -100,6 +101,10 @@ async def check_chapter_async(
     warnings: list[str] = []
     if w := missing_predicate_skip_warning(cfg):
         warnings.append(w)
+    if rewrites and not (
+        getattr(role_llms, "rewrite_writer", None) and getattr(role_llms, "rewrite_checker", None)
+    ):
+        warnings.append("Rewrites skipped: pass role_llms with rewrite_writer and rewrite_checker.")
     return ChapterCheck(
         findings=action,
         may_look=may_look,
@@ -125,7 +130,10 @@ def check_chapter(
 
     ``skip_rules`` drops findings whose ``rule_id`` starts with any entry, so a
     caller can say which problem types it already handles. ``rewrites=True``
-    (with ``llm``) attaches checked rewrites to rhythm and weakener notes.
+    (with ``role_llms`` holding a writer and a checker, see
+    ``llm.get_role_llms``) adds checked passage edits for paragraphs with
+    rhythm, weakener, or hollow notes. ``role_llms.hollow_judge``, when set,
+    judges hollow imagery in place of ``llm``.
     """
     coro_args: dict[str, Any] = {
         "chapter_number": chapter_number,

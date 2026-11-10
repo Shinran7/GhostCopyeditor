@@ -156,11 +156,13 @@ async def run_chapter_pipeline(
             budget=per_hit_budget,
         )
     findings = drop_brute_echo(findings)
-    if llm_enabled and llm is not None and cfg.rewrite_enabled:
-        from ghostcopyeditor.llm_engine.rewrite import run_checked_rewrites
+    writer = getattr(role_llms, "rewrite_writer", None)
+    checker = getattr(role_llms, "rewrite_checker", None)
+    if llm_enabled and cfg.rewrite_enabled and writer is not None and checker is not None:
+        from ghostcopyeditor.llm_engine.rewrite import run_passage_rewrites
 
-        findings = await run_checked_rewrites(
-            chapter, findings, llm, cfg, lexicon=book, cast=cast
+        findings = await run_passage_rewrites(
+            chapter, findings, writer, checker, cfg, lexicon=book, cast=cast
         )
     findings = apply_cast(findings, cast)
     findings.extend(chapter_pronoun_findings(chapter, cast))
