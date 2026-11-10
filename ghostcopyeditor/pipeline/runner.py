@@ -14,6 +14,7 @@ from ghostcopyeditor.models.finding import (
     Finding,
     assign_finding_ids,
 )
+from ghostcopyeditor.pipeline.positions import annotate_positions, scene_profiles
 from ghostcopyeditor.models.report import (
     ChapterResult,
     CopyEditReport,
@@ -153,6 +154,7 @@ async def run_chapter_pipeline(
     findings.extend(chapter_pronoun_findings(chapter, cast))
     findings = drop_lexicon_conflicts(findings, book)
     findings = assign_finding_ids(findings, chapter.chapter_number)
+    findings = annotate_positions(findings, chapter)
     return dedupe_findings(findings)
 
 
@@ -196,6 +198,7 @@ async def run_analyze_pipeline(
                 chapter_path=str(chapter.source_path),
                 title=chapter.title,
                 finding_ids=[f.id for f in action],
+                scenes=scene_profiles(chapter),
             )
         )
 

@@ -52,6 +52,31 @@ def find_scene_break_spans(content: str) -> list[Span]:
     return [Span(m.start(), m.end()) for m in _SCENE_BREAK_RE.finditer(content)]
 
 
+def scene_spans(content: str) -> list[Span]:
+    """Scenes in order, split on ``---`` breaks. Frontmatter is not a scene.
+
+    Scene 1 is ``spans[0]``. A chapter with no break is one scene.
+    """
+    fm = find_frontmatter_span(content)
+    cursor = fm.end if fm is not None else 0
+    spans: list[Span] = []
+    for brk in find_scene_break_spans(content):
+        if brk.start < cursor:
+            continue
+        spans.append(Span(cursor, brk.start))
+        cursor = brk.end
+    spans.append(Span(cursor, len(content)))
+    return [s for s in spans if content[s.start : s.end].strip()] or [Span(cursor, len(content))]
+
+
+def scene_number_at(index: int, scenes: list[Span]) -> int | None:
+    """1-based scene number holding *index*, else None."""
+    for i, span in enumerate(scenes, start=1):
+        if span.contains(index):
+            return i
+    return None
+
+
 def non_prose_spans(content: str) -> list[Span]:
     """Frontmatter, fenced code, headings, and ``---`` scene breaks."""
     spans: list[Span] = []
@@ -125,6 +150,8 @@ __all__ = [
     "in_any_span",
     "in_dialogue_quotes",
     "non_prose_spans",
+    "scene_number_at",
+    "scene_spans",
     "span_covered_by",
     "span_overlaps_any",
 ]

@@ -15,6 +15,8 @@ class Category(StrEnum):
     STYLE = "style"
     WORDINESS = "wordiness"
     ECHO = "echo"
+    RHYTHM = "rhythm"
+    WEAKENER = "weakener"
 
 
 class Severity(StrEnum):
@@ -53,6 +55,10 @@ class Location:
     char_start: int | None = None
     char_end: int | None = None
     excerpt: str = ""
+    # 1-based scene (split on ``---``) and the sentence span(s) holding the hit.
+    scene: int | None = None
+    sentence_start: int | None = None
+    sentence_end: int | None = None
 
 
 @dataclass
