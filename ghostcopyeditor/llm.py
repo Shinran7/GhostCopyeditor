@@ -251,7 +251,10 @@ def get_llm(
         try:
             from langchain_anthropic import ChatAnthropic
 
-            return ChatAnthropic(model=model_name, **extra_kwargs)  # type: ignore[arg-type]
+            # Current Claude models reject `temperature`; give room for JSON replies.
+            claude_kwargs = {k: v for k, v in extra_kwargs.items() if k != "temperature"}
+            claude_kwargs.setdefault("max_tokens", 8192)
+            return ChatAnthropic(model=model_name, **claude_kwargs)  # type: ignore[arg-type]
         except Exception:
             pass
 

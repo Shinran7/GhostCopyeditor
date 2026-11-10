@@ -184,6 +184,8 @@ class TestGetLlm:
         _install("langchain_anthropic", "ChatAnthropic", "fake-claude")
         llm = get_llm("claude-sonnet-4-20250514", manuscript_path=tmp_path)
         assert getattr(llm, "_llm_type") == "fake-claude"
+        assert "temperature" not in llm.kwargs
+        assert llm.kwargs["max_tokens"] == 100  # config wins over the 8192 default
 
         _install("langchain_xai", "ChatXAI", "fake-grok")
         llm = get_llm("grok-beta", manuscript_path=tmp_path)
