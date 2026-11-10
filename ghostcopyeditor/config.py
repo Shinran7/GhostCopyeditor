@@ -26,6 +26,21 @@ class StyleGuide(BaseModel):
     spellings: dict[str, str] = {}
 
 
+class ModelSettings(BaseModel):
+    """A model for one job (hollow judge, rewrite writer, rewrite checker).
+
+    ``model`` None means "not set". The other fields go to the provider as
+    given; None means the provider default (``temperature`` is dropped for
+    Claude). ``reasoning_effort`` reaches OpenAI, Fireworks, and Gemini
+    (as ``thinking_level``).
+    """
+
+    model: str | None = None
+    temperature: float | None = None
+    max_tokens: int | None = None
+    reasoning_effort: str | None = None
+
+
 class GhostCopyeditorConfig(BaseModel):
     """GhostCopyeditor configuration."""
 
@@ -63,9 +78,12 @@ class GhostCopyeditorConfig(BaseModel):
     style_guide: StyleGuide = StyleGuide()
     hollow_enabled: bool = True
     hollow_max_candidates: int = 80
+    hollow_judge: ModelSettings = ModelSettings()
     rewrite_enabled: bool = True
     rewrite_max_per_chapter: int = 8
     rewrite_length_band: float = 0.4
+    rewrite_writer: ModelSettings = ModelSettings()
+    rewrite_checker: ModelSettings = ModelSettings()
     skip_rules: list[str] = []
 
     @classmethod
@@ -186,12 +204,18 @@ class GhostCopyeditorConfig(BaseModel):
             "# Hollow imagery: code finds candidates, the LLM judges (notes only)",
             f"hollow_enabled: {_fmt(self.hollow_enabled)}",
             f"hollow_max_candidates: {_fmt(self.hollow_max_candidates)}",
+            "# Judge model; model null = use the main model",
+            f"hollow_judge: {_fmt(self.hollow_judge.model_dump())}",
             "",
             "# Checked rewrites for rhythm/weakener notes (needs the LLM engine)",
             f"rewrite_enabled: {_fmt(self.rewrite_enabled)}",
             f"rewrite_max_per_chapter: {_fmt(self.rewrite_max_per_chapter)}",
             "# Rewrite word count must stay within this share of the original",
             f"rewrite_length_band: {_fmt(self.rewrite_length_band)}",
+            "# Rewrites need both models set. The writer must write good prose",
+            "# (e.g. the book's own writing model); the checker guards continuity.",
+            f"rewrite_writer: {_fmt(self.rewrite_writer.model_dump())}",
+            f"rewrite_checker: {_fmt(self.rewrite_checker.model_dump())}",
             "",
             "# Drop findings whose rule id starts with any of these (e.g. echo.)",
             f"skip_rules: {_fmt(self.skip_rules)}",

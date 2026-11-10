@@ -61,6 +61,7 @@ async def check_chapter_async(
     story_dir: str | Path | None = None,
     skip_rules: tuple[str, ...] | list[str] = (),
     rewrites: bool = False,
+    role_llms: Any | None = None,
 ) -> ChapterCheck:
     """Async form of :func:`check_chapter`."""
     from ghostcopyeditor.canon import load_cast
@@ -93,6 +94,7 @@ async def check_chapter_async(
         llm_enabled=llm is not None,
         lexicon=lexicon,
         cast=cast,
+        role_llms=role_llms,
     )
     action, may_look = partition_action_list(findings)
     warnings: list[str] = []
@@ -117,6 +119,7 @@ def check_chapter(
     story_dir: str | Path | None = None,
     skip_rules: tuple[str, ...] | list[str] = (),
     rewrites: bool = False,
+    role_llms: Any | None = None,
 ) -> ChapterCheck:
     """Check one chapter. Safe to call from sync code or inside a running loop.
 
@@ -133,6 +136,7 @@ def check_chapter(
         "story_dir": story_dir,
         "skip_rules": skip_rules,
         "rewrites": rewrites,
+        "role_llms": role_llms,
     }
     try:
         asyncio.get_running_loop()

@@ -216,3 +216,97 @@ class TestGetLlm:
         monkeypatch.setitem(sys.modules, "langchain_ollama", ollama)
         llm = get_llm("ollama:llama3")
         assert getattr(llm, "_llm_type") == "stub"
+
+
+class TestModelSettings:
+    def _fake_openai(self, monkeypatch: pytest.MonkeyPatch, label: str = "fake-oai") -> None:
+        import sys
+        from types import ModuleType
+
+        mod = ModuleType("langchain_openai")
+
+        class _Fake:
+            def __init__(self, **kwargs: object) -> None:
+                self.kwargs = kwargs
+                self._llm_type = label
+
+        mod.ChatOpenAI = _Fake  # type: ignore[attr-defined]
+        monkeypatch.setitem(sys.modules, "langchain_openai", mod)
+
+    def test_settings_override_config(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from ghostcopyeditor.config import ModelSettings
+
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "config.yaml").write_text(
+            "model: stub\ntemperature: 0.2\nmax_tokens: 100\n", encoding="utf-8"
+        )
+        monkeypatch.setenv("OPENAI_API_KEY", "oai-test")
+        self._fake_openai(monkeypatch)
+        settings = ModelSettings(
+            model="gpt-6.1-sol", temperature=1, max_tokens=16384, reasoning_effort="low"
+        )
+        llm = get_llm(manuscript_path=tmp_path, settings=settings)
+        assert llm.kwargs == {  # type: ignore[attr-defined]
+            "model": "gpt-6.1-sol",
+            "temperature": 1,
+            "max_tokens": 16384,
+            "reasoning_effort": "low",
+        }
+
+    def test_settings_without_params_drop_config_params(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from ghostcopyeditor.config import ModelSettings
+
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "config.yaml").write_text(
+            "model: stub\ntemperature: 0.2\n", encoding="utf-8"
+        )
+        monkeypatch.setenv("OPENAI_API_KEY", "oai-test")
+        self._fake_openai(monkeypatch)
+        llm = get_llm(manuscript_path=tmp_path, settings=ModelSettings(model="gpt-4o"))
+        assert llm.kwargs == {"model": "gpt-4o"}  # type: ignore[attr-defined]
+
+    def test_role_llms(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        from ghostcopyeditor.config import GhostCopyeditorConfig, ModelSettings
+        from ghostcopyeditor.llm import get_role_llms
+
+        monkeypatch.chdir(tmp_path)
+        cfg = GhostCopyeditorConfig()
+        roles, warnings = get_role_llms(cfg, tmp_path)
+        assert roles.hollow_judge is None
+        assert roles.rewrite_writer is None
+        assert any("Rewrites skipped" in w for w in warnings)
+
+        cfg = GhostCopyeditorConfig(
+            hollow_judge=ModelSettings(model="stub"),
+            rewrite_writer=ModelSettings(model="stub"),
+            rewrite_checker=ModelSettings(model="stub"),
+        )
+        roles, warnings = get_role_llms(cfg, tmp_path)
+        assert roles.hollow_judge is not None
+        assert roles.rewrite_checker is not None
+        assert warnings == []
+
+        cfg = GhostCopyeditorConfig(rewrite_enabled=False)
+        assert get_role_llms(cfg, tmp_path)[1] == []
+
+    def test_role_llm_that_cannot_start_is_skipped(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from ghostcopyeditor.config import GhostCopyeditorConfig, ModelSettings
+        from ghostcopyeditor.llm import get_role_llms
+
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+        monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+        monkeypatch.setattr("ghostcopyeditor.llm.load_secrets", lambda: None)
+        cfg = GhostCopyeditorConfig(
+            rewrite_enabled=False, hollow_judge=ModelSettings(model="gemini-3.8-flash")
+        )
+        roles, warnings = get_role_llms(cfg, tmp_path)
+        assert roles.hollow_judge is None
+        assert warnings
+        assert "hollow_judge" in warnings[0]

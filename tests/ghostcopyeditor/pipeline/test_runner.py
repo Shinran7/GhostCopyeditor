@@ -144,3 +144,35 @@ class TestMultiChapterIds:
         assert len(ids) == len(set(ids))
         assert any(i.startswith("det-c001-") for i in ids)
         assert any(i.startswith("det-c002-") for i in ids)
+
+
+class TestRoleLLMs:
+    def test_hollow_judge_uses_its_own_model(self) -> None:
+        from types import SimpleNamespace
+
+        from ghostcopyeditor.pipeline.runner import run_chapter_pipeline
+
+        calls: list[str] = []
+
+        class _LLM:
+            def __init__(self, name: str) -> None:
+                self.name = name
+
+            async def ainvoke(self, messages: object) -> SimpleNamespace:
+                calls.append(self.name)
+                return SimpleNamespace(content="[]")
+
+        chapter = Chapter(
+            title="",
+            content="Harbor tar and cold leather rose, a smell with no opinion.\n",
+            chapter_number=1,
+            source_path=Path("ch1.md"),
+        )
+        cfg = GhostCopyeditorConfig(rewrite_enabled=False)
+        roles = SimpleNamespace(hollow_judge=_LLM("judge"))
+        asyncio.run(
+            run_chapter_pipeline(
+                chapter, cfg=cfg, llm=_LLM("main"), llm_enabled=True, role_llms=roles
+            )
+        )
+        assert "judge" in calls

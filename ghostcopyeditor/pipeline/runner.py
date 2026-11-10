@@ -96,6 +96,7 @@ async def run_chapter_pipeline(
     llm_enabled: bool = False,
     lexicon: Lexicon | None = None,
     cast: tuple[CastMember, ...] = (),
+    role_llms: Any | None = None,
 ) -> list[Finding]:
     """Run engines for one chapter, assign IDs, then dedupe once."""
     book = lexicon or Lexicon()
@@ -118,10 +119,11 @@ async def run_chapter_pipeline(
                 chapter, findings, llm, cfg, lexicon=book, cast=cast
             )
         )
-    if llm_enabled and llm is not None and cfg.hollow_enabled:
+    judge = getattr(role_llms, "hollow_judge", None) or llm
+    if llm_enabled and judge is not None and cfg.hollow_enabled:
         from ghostcopyeditor.llm_engine.hollow import run_hollow_judge
 
-        findings.extend(await run_hollow_judge(chapter, llm, cfg))
+        findings.extend(await run_hollow_judge(chapter, judge, cfg))
     from ghostcopyeditor.typesafe.garbled_review import (
         drop_brute_echo,
         review_garbled_findings,
@@ -194,6 +196,7 @@ async def run_analyze_pipeline(
     warnings: list[str] | None = None,
     lexicon: Lexicon | None = None,
     cast: tuple[CastMember, ...] = (),
+    role_llms: Any | None = None,
 ) -> CopyEditReport:
     """Run the chapter pipeline on each chapter and build a combined report."""
     all_findings: list[Finding] = []
@@ -208,6 +211,7 @@ async def run_analyze_pipeline(
             llm_enabled=llm_enabled,
             lexicon=lexicon,
             cast=cast,
+            role_llms=role_llms,
         )
         action, _look = partition_action_list(fs)
         all_findings.extend(fs)

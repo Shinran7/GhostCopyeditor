@@ -7,13 +7,15 @@ Twin of Ghostreader ``llm.py``. ``load_secrets`` shipped in PR 1; provider
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage
 from rich import print as rprint
 
-from ghostcopyeditor.config import GhostCopyeditorConfig
+from ghostcopyeditor.config import GhostCopyeditorConfig, ModelSettings
 
 FIREWORKS_BASE_URL = "https://api.fireworks.ai/inference/v1"
 DEFAULT_MODEL = "gemini-3.8-flash"
@@ -147,7 +149,10 @@ def _stub_chat_model() -> BaseChatModel:
 
 
 def get_llm(
-    model: str | None = None, manuscript_path: Path | None = None
+    model: str | None = None,
+    manuscript_path: Path | None = None,
+    *,
+    settings: ModelSettings | None = None,
 ) -> BaseChatModel:
     """Create a langchain ChatModel from config or --model override.
 
@@ -156,12 +161,23 @@ def get_llm(
 
     Raises typer.Exit if no model is configured and --model is not given
     (unless model is explicitly 'stub' for testing).
+
+    With *settings*, the model and its parameters come from *settings*
+    alone (config ``temperature`` / ``max_tokens`` are not used).
     """
     import typer
 
     load_secrets()
-    model_name = resolve_model_name(model, manuscript_path=manuscript_path)
     cfg = GhostCopyeditorConfig.load(manuscript_path)
+    if settings is not None:
+        model_name = settings.model or resolve_model_name(
+            model, manuscript_path=manuscript_path
+        )
+        params = settings
+    else:
+        model_name = resolve_model_name(model, manuscript_path=manuscript_path)
+        params = ModelSettings(temperature=cfg.temperature, max_tokens=cfg.max_tokens)
+    effort = params.reasoning_effort
 
     if not model_name:
         rprint(
@@ -171,10 +187,10 @@ def get_llm(
         raise typer.Exit(code=1)
 
     extra_kwargs: dict[str, object] = {}
-    if cfg.temperature is not None:
-        extra_kwargs["temperature"] = cfg.temperature
-    if cfg.max_tokens is not None:
-        extra_kwargs["max_tokens"] = cfg.max_tokens
+    if params.temperature is not None:
+        extra_kwargs["temperature"] = params.temperature
+    if params.max_tokens is not None:
+        extra_kwargs["max_tokens"] = params.max_tokens
 
     # Branch order: ollama → fireworks → gemini → openai → claude → grok → stub
     if model_name.startswith("ollama:"):
@@ -206,12 +222,12 @@ def get_llm(
         try:
             from langchain_openai import ChatOpenAI
 
-            effort = _fireworks_reasoning_effort(model_id)
+            fw_effort = _fireworks_reasoning_effort(model_id, effort)
             return ChatOpenAI(
                 model=model_id,
                 api_key=api_key,
                 base_url=FIREWORKS_BASE_URL,
-                extra_body={"reasoning_effort": effort},
+                extra_body={"reasoning_effort": fw_effort},
                 **extra_kwargs,
             )  # type: ignore[arg-type]
         except Exception:
@@ -231,7 +247,7 @@ def get_llm(
             kwargs: dict[str, object] = {
                 "model": model_name,
                 "api_key": api_key,
-                "thinking_level": "low",
+                "thinking_level": effort or "low",
                 "max_retries": 1,
                 **extra_kwargs,
             }
@@ -243,6 +259,8 @@ def get_llm(
         try:
             from langchain_openai import ChatOpenAI
 
+            if effort:
+                extra_kwargs["reasoning_effort"] = effort
             return ChatOpenAI(model=model_name, **extra_kwargs)  # type: ignore[arg-type]
         except Exception:
             pass
@@ -273,6 +291,40 @@ def get_llm(
         )
 
     return _stub_chat_model()
+
+
+@dataclass
+class RoleLLMs:
+    """Models for single jobs. None means "use the main model" (hollow
+    judge) or "skip the job" (rewrites need both writer and checker)."""
+
+    hollow_judge: Any | None = None
+    rewrite_writer: Any | None = None
+    rewrite_checker: Any | None = None
+
+
+def get_role_llms(
+    cfg: GhostCopyeditorConfig, manuscript_path: Path | None = None
+) -> tuple[RoleLLMs, list[str]]:
+    """Build the per-job models *cfg* names, with warnings for the report."""
+    roles = RoleLLMs()
+    warnings: list[str] = []
+    jobs = [("hollow_judge", cfg.hollow_judge)]
+    if cfg.rewrite_enabled:
+        jobs += [("rewrite_writer", cfg.rewrite_writer), ("rewrite_checker", cfg.rewrite_checker)]
+    for name, settings in jobs:
+        if not settings.model:
+            continue
+        llm = get_llm(manuscript_path=manuscript_path, settings=settings)
+        if getattr(llm, "_llm_type", None) == "stub" and settings.model != "stub":
+            warnings.append(f"{name}: could not start '{settings.model}'; job skipped.")
+            continue
+        setattr(roles, name, llm)
+    if cfg.rewrite_enabled and (roles.rewrite_writer is None or roles.rewrite_checker is None):
+        warnings.append(
+            "Rewrites skipped: set rewrite_writer.model and rewrite_checker.model."
+        )
+    return roles, warnings
 
 
 # Compatibility aliases used by older call sites / tests

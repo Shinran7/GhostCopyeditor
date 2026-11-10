@@ -15,7 +15,7 @@ from ghostcopyeditor.config import GhostCopyeditorConfig
 from ghostcopyeditor.canon import canon_file_findings, load_cast
 from ghostcopyeditor.ingestion.discovery import discover_analyze
 from ghostcopyeditor.lexicon import lexicon_notice, load_lexicon
-from ghostcopyeditor.llm import get_llm, load_secrets
+from ghostcopyeditor.llm import get_llm, get_role_llms, load_secrets
 from ghostcopyeditor.models.finding import assign_finding_ids
 from ghostcopyeditor.models.report import ReportSummary
 from ghostcopyeditor.pipeline.runner import run_analyze_pipeline
@@ -85,8 +85,11 @@ def run_analyze(
             )
 
     llm = None
+    role_llms = None
+    role_warnings: list[str] = []
     if llm_on:
         llm = get_llm(model, manuscript_path=path)
+        role_llms, role_warnings = get_role_llms(cfg, manuscript_path=path)
         llm_type = getattr(llm, "_llm_type", None)
         requested = (model or cfg.model or "").strip().lower()
         if llm_type == "stub" and requested != "stub":
@@ -118,9 +121,10 @@ def run_analyze(
             manuscript_name=discovery.manuscript_name,
             story_slug=discovery.story_slug,
             apply=do_apply,
-            warnings=warnings,
+            warnings=[*warnings, *role_warnings],
             lexicon=lexicon,
             cast=cast,
+            role_llms=role_llms,
         )
     )
 
@@ -155,6 +159,7 @@ async def _run_engines(
     warnings: list[str],
     lexicon: Any | None = None,
     cast: tuple[Any, ...] = (),
+    role_llms: Any | None = None,
 ) -> Any:
     kwargs = {
         "cfg": cfg,
@@ -170,6 +175,7 @@ async def _run_engines(
         "warnings": warnings,
         "lexicon": lexicon,
         "cast": cast,
+        "role_llms": role_llms,
     }
     if typesafe_on:
         from typesafe_sdk import AsyncTypeSafeClient

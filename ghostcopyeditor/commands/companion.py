@@ -15,7 +15,7 @@ from ghostcopyeditor.config import GhostCopyeditorConfig
 from ghostcopyeditor.canon import canon_file_findings, load_cast
 from ghostcopyeditor.ingestion.discovery import discover_companion
 from ghostcopyeditor.lexicon import lexicon_notice, load_lexicon
-from ghostcopyeditor.llm import get_llm, load_secrets
+from ghostcopyeditor.llm import get_llm, get_role_llms, load_secrets
 from ghostcopyeditor.models.finding import assign_finding_ids
 from ghostcopyeditor.models.report import (
     CopyEditReport,
@@ -79,8 +79,11 @@ def run_companion(
             )
 
     llm = None
+    role_llms = None
+    role_warnings: list[str] = []
     if llm_on:
         llm = get_llm(model, manuscript_path=path)
+        role_llms, role_warnings = get_role_llms(cfg, manuscript_path=path)
         llm_type = getattr(llm, "_llm_type", None)
         requested = (model or cfg.model or "").strip().lower()
         if llm_type == "stub" and requested != "stub":
@@ -110,10 +113,11 @@ def run_companion(
             llm=llm,
             lexicon=lexicon,
             cast=cast,
+            role_llms=role_llms,
         )
     )
 
-    warnings = list(discovery.warnings)
+    warnings = [*discovery.warnings, *role_warnings]
     notice = lexicon_notice(lexicon, discovery.story_dir)
     if notice:
         warnings.append(notice)
@@ -158,6 +162,7 @@ async def _run_engines(
     llm: Any | None,
     lexicon: Any | None = None,
     cast: tuple[Any, ...] = (),
+    role_llms: Any | None = None,
 ) -> list[Any]:
     if typesafe_on:
         from typesafe_sdk import AsyncTypeSafeClient
@@ -172,6 +177,7 @@ async def _run_engines(
                 llm_enabled=llm_on,
                 lexicon=lexicon,
                 cast=cast,
+                role_llms=role_llms,
             )
     return await run_chapter_pipeline(
         chapter,
@@ -181,6 +187,7 @@ async def _run_engines(
         llm_enabled=llm_on,
         lexicon=lexicon,
         cast=cast,
+        role_llms=role_llms,
     )
 
 
