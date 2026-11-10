@@ -20,6 +20,7 @@ def test_registry_order_and_rule_ids() -> None:
         "EchoChecker",
         "RhythmChecker",
         "WeakenerChecker",
+        "StyleGuideChecker",
     ]
     all_ids = {rid for c in CHECKER_REGISTRY for rid in c.rule_ids}
     assert "mech.double_space" in all_ids
