@@ -85,21 +85,30 @@ You check continuity for a novel written by an automated system that reads \
 its own earlier chapters. You get an ORIGINAL passage, an EDITED version, \
 and the text before and after it.
 
-1. facts: list every fact the ORIGINAL establishes that later text could \
-rely on: who is present, who does what, objects and their state, places, \
-times, numbers, what characters know or decide, details the surrounding \
-text refers to. For each, say whether the EDIT keeps it, changes it, or \
-loses it. A fact said in other words is kept.
+A fact is something literally true in the story world that later text \
+could rely on: who is present, who does what, objects and their state, \
+places, times, numbers, what characters say, know, or decide, details the \
+surrounding text refers to. A figure of speech is not a fact; only its \
+literal content is ("nobody filled the knock" holds the fact "nobody spoke \
+after the knock"; "a smell with no opinion" holds none). Imagery, \
+similes, narrator judgement, characterization by metaphor, tone, and \
+rhythm are never facts.
+
+1. facts: list each fact in the ORIGINAL. For each, say whether the EDIT \
+keeps it, changes it, or loses it. A fact said in other words, or plainly \
+implied by the EDIT, is kept. Changed means the story world now differs. \
+Mark each literal true or false: false when the item is figurative, the \
+narrator's judgement, or tone, and you listed it anyway.
 2. added: facts the EDIT states that the ORIGINAL did not (new events, \
-objects, knowledge, sense details). New wording for an old fact is not an \
-addition.
+objects, knowledge, sense details). New wording, framing, or emphasis for \
+an old fact is not an addition.
 3. after_ok: does the AFTER text still read correctly after the EDIT (no \
 reference to something the edit removed)?
-4. wording: notes on wording, tone, rhythm, or imagery. These are not \
-facts; never put them in facts or added.
+4. wording: everything else you notice: lost images, tone, rhythm, \
+framing. These never go in facts or added.
 
 Return ONLY JSON, no fences:
-{"facts": [{"fact": "...", "status": "kept|changed|lost", "note": "..."}],
+{"facts": [{"fact": "...", "status": "kept|changed|lost", "literal": true, "note": "..."}],
  "added": ["..."],
  "after_ok": true, "after_note": "...",
  "wording": ["..."]}
@@ -257,6 +266,7 @@ def judge_continuity(report: dict[str, Any] | None) -> tuple[list[str], dict[str
         {
             "fact": str(f.get("fact") or "").strip(),
             "status": str(f.get("status") or "").strip().lower(),
+            "literal": f.get("literal") is not False,
             "note": str(f.get("note") or "").strip(),
         }
         for f in report.get("facts") or []
@@ -264,15 +274,20 @@ def judge_continuity(report: dict[str, Any] | None) -> tuple[list[str], dict[str
     ]
     added = _str_list(report.get("added"))
     after_ok = report.get("after_ok") is not False
+    literal = [f for f in facts if f["literal"]]
     reasons = [
-        f"fact {f['status'] or 'unclear'}: {f['fact']}" for f in facts if f["status"] != "kept"
+        f"fact {f['status'] or 'unclear'}: {f['fact']}" for f in literal if f["status"] != "kept"
     ]
     reasons += [f"fact added: {a}" for a in added]
     if not after_ok:
         reasons.append(f"after text breaks: {str(report.get('after_note') or '').strip()}")
-    if not facts:
+    if not literal:
         reasons.append("checker listed no facts")
-    clean = {"facts": facts, "added": added, "wording": _str_list(report.get("wording"))}
+    # A figurative item the edit dropped is a wording note, not a fact.
+    wording = _str_list(report.get("wording")) + [
+        f"{f['status']}: {f['fact']}" for f in facts if not f["literal"] and f["status"] != "kept"
+    ]
+    clean = {"facts": literal, "added": added, "wording": wording}
     return reasons, clean
 
 
@@ -324,32 +339,32 @@ async def _edit_unit(
     cast: tuple[CastMember, ...],
     protected: list[str],
     before: list[Finding],
-) -> Finding | list[str]:
-    """The passage finding, or the reasons the edit was rejected."""
+) -> Finding | tuple[list[str], str]:
+    """The passage finding, or (reasons rejected, the rejected edit)."""
     notes = [findings[i].message for i in unit.indices]
     try:
         prompt = _writer_prompt(chapter, unit, notes, lexicon, cast)
         draft = await _ask(writer, WRITER_SYSTEM_PROMPT, prompt)
     except Exception:  # noqa: BLE001
         logger.exception("Rewrite writer failed for chapter %s", chapter.chapter_number)
-        return ["writer_failed"]
+        return ["writer_failed"], ""
     edit = str((draft or {}).get("edit") or "").strip()
     if not draft or not edit:
-        return ["writer_unreadable"]
+        return ["writer_unreadable"], ""
     original = chapter.content[unit.start : unit.end]
     if " ".join(edit.split()) == " ".join(original.split()):
-        return ["unchanged"]
+        return ["unchanged"], ""
     reason = verify_edit(chapter, unit, edit, cfg, protected, before)
     if reason:
-        return [reason]
+        return [reason], edit
     try:
         report = await _ask(checker, CHECKER_SYSTEM_PROMPT, _checker_prompt(chapter, unit, edit))
     except Exception:  # noqa: BLE001
         logger.exception("Rewrite checker failed for chapter %s", chapter.chapter_number)
-        return ["checker_failed"]
+        return ["checker_failed"], edit
     reasons, checked = judge_continuity(report)
     if reasons:
-        return reasons
+        return reasons, edit
     purpose = str(draft.get("purpose") or "").strip()
     return Finding(
         id="",
@@ -398,7 +413,7 @@ async def run_passage_rewrites(
     before = run_deterministic_checkers(chapter, _strict_cfg(cfg))
     gate = asyncio.Semaphore(_CONCURRENCY)
 
-    async def one(unit: _Unit) -> Finding | list[str]:
+    async def one(unit: _Unit) -> Finding | tuple[list[str], str]:
         async with gate:
             return await _edit_unit(
                 chapter, unit, findings, writer, checker, cfg, book, cast, protected, before
@@ -410,10 +425,12 @@ async def run_passage_rewrites(
         if isinstance(result, Finding):
             out.append(result)
             continue
+        reasons, edit = result
+        extra: dict[str, Any] = {"rewrite_rejected": reasons}
+        if edit:
+            extra["rewrite_rejected_edit"] = edit
         for idx in unit.indices:
-            out[idx] = dataclasses.replace(
-                out[idx], metadata={**out[idx].metadata, "rewrite_rejected": result}
-            )
+            out[idx] = dataclasses.replace(out[idx], metadata={**out[idx].metadata, **extra})
     return out
 
 

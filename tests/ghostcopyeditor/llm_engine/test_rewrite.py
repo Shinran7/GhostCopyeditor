@@ -256,3 +256,21 @@ def test_api_rewrites() -> None:
     roles = SimpleNamespace(rewrite_writer=_Stub(_draft()), rewrite_checker=_Stub(json.dumps(KEPT)))
     result = check_chapter(TEXT, config=cfg, rewrites=True, role_llms=roles)
     assert any(f.rule_id == "rewrite.passage" for f in result.findings)
+
+
+def test_figurative_loss_is_a_wording_note() -> None:
+    report = {**KEPT, "facts": [*KEPT["facts"],
+                                {"fact": "a smell with no opinion", "status": "lost",
+                                 "literal": False}]}
+    out = _run(_Stub(_draft()), _Stub(json.dumps(report)))
+    (edit,) = _passages(out)
+    assert "lost: a smell with no opinion" in edit.metadata["wording"]
+    assert all(f["literal"] for f in edit.metadata["facts"])
+    only_figurative = {**KEPT, "facts": [{"fact": "x", "status": "kept", "literal": False}]}
+    out = _run(_Stub(_draft()), _Stub(json.dumps(only_figurative)))
+    assert _rejected(out) == ["checker listed no facts"]
+
+
+def test_rejected_edit_is_kept_for_review() -> None:
+    out = _run(_Stub(_draft()), _Stub(json.dumps({**KEPT, "added": ["a lamp"]})))
+    assert any(f.metadata.get("rewrite_rejected_edit") == GOOD for f in out)
