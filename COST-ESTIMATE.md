@@ -35,7 +35,8 @@ Local CLI for the Ghost suite. Typical month is API usage only (LLM + TypeSafe w
 
 - Whole-novel analyze with TypeSafe + LLM on every chapter pushes the high band
 - Leaving engines off (defaults) keeps cost near zero
-- Checked rewrites (rhythm and weakener notes) add one LLM call per scene that has notes: usually 2 - 4 calls per chapter, capped at 8 rewrite targets. Each call sends one scene plus the targets, so roughly the same tokens as one garbled pass per chapter. Turn off with `rewrite_enabled: false` or `--no-llm`.
+- Hollow-imagery judge: one LLM call per chapter (the whole chapter plus up to 80 candidate lines), on `hollow_judge` or the main model. Roughly the same tokens as one garbled pass. Turn off with `hollow_enabled: false`.
+- Checked passage rewrites: two calls per passage (writer, then checker), capped at `rewrite_max_per_chapter` (default 8), so up to 16 calls per chapter. Each call is small (the passage plus three paragraphs on each side), but the writer is a prose model (e.g. Sol) and usually costs more than the analysis model. Rewrites run only when both `rewrite_writer` and `rewrite_checker` are set. Turn off with `rewrite_enabled: false` or `--no-llm`.
 
 ## Build & maintenance time
 
