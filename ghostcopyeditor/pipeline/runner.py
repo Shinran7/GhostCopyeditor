@@ -4,22 +4,22 @@ from __future__ import annotations
 
 from typing import Any
 
+from ghostcopyeditor.canon import CastMember, apply_cast, chapter_pronoun_findings
 from ghostcopyeditor.checkers import run_deterministic_checkers
 from ghostcopyeditor.config import GhostCopyeditorConfig
 from ghostcopyeditor.ingestion import Chapter
-from ghostcopyeditor.canon import CastMember, apply_cast, chapter_pronoun_findings
 from ghostcopyeditor.lexicon import Lexicon, drop_lexicon_conflicts
 from ghostcopyeditor.models.finding import (
     Engine,
     Finding,
     assign_finding_ids,
 )
-from ghostcopyeditor.pipeline.positions import annotate_positions, scene_profiles
 from ghostcopyeditor.models.report import (
     ChapterResult,
     CopyEditReport,
     partition_action_list,
 )
+from ghostcopyeditor.pipeline.positions import annotate_positions, scene_profiles
 
 
 def _normalize_message(message: str) -> str:
@@ -155,7 +155,16 @@ async def run_chapter_pipeline(
     findings = drop_lexicon_conflicts(findings, book)
     findings = assign_finding_ids(findings, chapter.chapter_number)
     findings = annotate_positions(findings, chapter)
+    findings = drop_skipped_rules(findings, cfg.skip_rules)
     return dedupe_findings(findings)
+
+
+def drop_skipped_rules(findings: list[Finding], prefixes: list[str]) -> list[Finding]:
+    """Drop findings whose rule id starts with any prefix (caller handles them)."""
+    wanted = tuple(p for p in prefixes if p)
+    if not wanted:
+        return findings
+    return [f for f in findings if not (f.rule_id or "").startswith(wanted)]
 
 
 async def run_analyze_pipeline(

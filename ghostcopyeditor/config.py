@@ -8,6 +8,7 @@ Resolution order:
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Literal
 
@@ -40,6 +41,7 @@ class GhostCopyeditorConfig(BaseModel):
     missing_predicate_skip_dialogue_heavy: bool = True
     missing_predicate_typesafe_confirm: bool = True
     missing_predicate_require_period: bool = True
+    skip_rules: list[str] = []
 
     @classmethod
     def load(cls, manuscript_path: Path | None = None) -> GhostCopyeditorConfig:
@@ -65,6 +67,8 @@ class GhostCopyeditorConfig(BaseModel):
                 return "null"
             if isinstance(val, bool):
                 return str(val).lower()
+            if isinstance(val, (list, dict)):
+                return json.dumps(val)
             return str(val)
 
         lines = [
@@ -131,6 +135,9 @@ class GhostCopyeditorConfig(BaseModel):
                 "missing_predicate_require_period: "
                 f"{_fmt(self.missing_predicate_require_period)}"
             ),
+            "",
+            "# Drop findings whose rule id starts with any of these (e.g. echo.)",
+            f"skip_rules: {_fmt(self.skip_rules)}",
             "",
         ]
 

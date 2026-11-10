@@ -22,6 +22,7 @@ from ghostcopyeditor.models.report import (
     ReportSummary,
     partition_action_list,
 )
+from ghostcopyeditor.pipeline.positions import scene_profiles
 from ghostcopyeditor.pipeline.runner import run_chapter_pipeline
 from ghostcopyeditor.report import export_json, persist_report_json, render_report
 from ghostcopyeditor.typesafe import (
@@ -144,6 +145,7 @@ def run_companion(
         may_look=may_look,
     )
     report.summary = ReportSummary.from_findings(action, chapters_scanned=1)
+    report.chapters[0].scenes = scene_profiles(discovery.chapter)
     _emit(report, output_format=output_format, output_path=output_path)
 
 
