@@ -61,6 +61,8 @@ class GhostCopyeditorConfig(BaseModel):
     weak_tag_adverb_per_1000: float = 1.0
     weak_min_scene_words: int = 300
     style_guide: StyleGuide = StyleGuide()
+    hollow_enabled: bool = True
+    hollow_max_candidates: int = 80
     rewrite_enabled: bool = True
     rewrite_max_per_chapter: int = 8
     rewrite_length_band: float = 0.4
@@ -180,6 +182,10 @@ class GhostCopyeditorConfig(BaseModel):
             "# Style guide: banned phrases, pet words {word: per-chapter limit},",
             "# house spellings {wrong: right}",
             f"style_guide: {_fmt(self.style_guide.model_dump())}",
+            "",
+            "# Hollow imagery: code finds candidates, the LLM judges (notes only)",
+            f"hollow_enabled: {_fmt(self.hollow_enabled)}",
+            f"hollow_max_candidates: {_fmt(self.hollow_max_candidates)}",
             "",
             "# Checked rewrites for rhythm/weakener notes (needs the LLM engine)",
             f"rewrite_enabled: {_fmt(self.rewrite_enabled)}",

@@ -158,7 +158,9 @@ class CopyEditReport:
         )
 
 
-_NOTE_CATEGORIES = frozenset({Category.ECHO, Category.RHYTHM, Category.WEAKENER})
+_NOTE_CATEGORIES = frozenset(
+    {Category.ECHO, Category.RHYTHM, Category.WEAKENER, Category.HOLLOW}
+)
 
 
 def partition_action_list(

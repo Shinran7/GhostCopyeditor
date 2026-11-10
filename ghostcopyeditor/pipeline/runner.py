@@ -118,6 +118,10 @@ async def run_chapter_pipeline(
                 chapter, findings, llm, cfg, lexicon=book, cast=cast
             )
         )
+    if llm_enabled and llm is not None and cfg.hollow_enabled:
+        from ghostcopyeditor.llm_engine.hollow import run_hollow_judge
+
+        findings.extend(await run_hollow_judge(chapter, llm, cfg))
     from ghostcopyeditor.typesafe.garbled_review import (
         drop_brute_echo,
         review_garbled_findings,

@@ -17,6 +17,8 @@ class Category(StrEnum):
     ECHO = "echo"
     RHYTHM = "rhythm"
     WEAKENER = "weakener"
+    HOLLOW = "hollow"
+    REWRITE = "rewrite"
 
 
 class Severity(StrEnum):
