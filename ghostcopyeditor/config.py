@@ -41,6 +41,12 @@ class GhostCopyeditorConfig(BaseModel):
     missing_predicate_skip_dialogue_heavy: bool = True
     missing_predicate_typesafe_confirm: bool = True
     missing_predicate_require_period: bool = True
+    rhythm_enabled: bool = True
+    rhythm_opener_run: int = 3
+    rhythm_shape_run: int = 4
+    rhythm_short_words: int = 14
+    rhythm_flat_variety: int = 62
+    rhythm_min_scene_sentences: int = 20
     skip_rules: list[str] = []
 
     @classmethod
@@ -135,6 +141,17 @@ class GhostCopyeditorConfig(BaseModel):
                 "missing_predicate_require_period: "
                 f"{_fmt(self.missing_predicate_require_period)}"
             ),
+            "",
+            "# Rhythm: syntactic monotony notes (narration only)",
+            f"rhythm_enabled: {_fmt(self.rhythm_enabled)}",
+            "# Flag N+ sentences in a row with the same first word",
+            f"rhythm_opener_run: {_fmt(self.rhythm_opener_run)}",
+            "# Flag N+ short subject-then-verb sentences in a row",
+            f"rhythm_shape_run: {_fmt(self.rhythm_shape_run)}",
+            f"rhythm_short_words: {_fmt(self.rhythm_short_words)}",
+            "# Flag a scene whose variety score (0-100) is below this",
+            f"rhythm_flat_variety: {_fmt(self.rhythm_flat_variety)}",
+            f"rhythm_min_scene_sentences: {_fmt(self.rhythm_min_scene_sentences)}",
             "",
             "# Drop findings whose rule id starts with any of these (e.g. echo.)",
             f"skip_rules: {_fmt(self.skip_rules)}",

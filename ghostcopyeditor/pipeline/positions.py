@@ -9,6 +9,7 @@ from typing import Any
 from ghostcopyeditor.checkers.regions import scene_number_at, scene_spans
 from ghostcopyeditor.ingestion import Chapter
 from ghostcopyeditor.models.finding import Finding
+from ghostcopyeditor.nlp.sentence_shape import narration_shapes, scene_metrics
 from ghostcopyeditor.nlp.sentences import prose_sentences, sentence_index_at
 
 _WORD_RE = re.compile(r"[A-Za-z0-9']+")
@@ -56,6 +57,7 @@ def scene_profiles(chapter: Chapter) -> list[dict[str, Any]]:
                 "words": sum(len(_WORD_RE.findall(s.text)) for s in in_scene),
                 "sentences": len(in_scene),
                 "narration_sentences": sum(1 for s in in_scene if not s.dialogue),
+                "rhythm": scene_metrics(narration_shapes(in_scene)),
             }
         )
     return out

@@ -158,17 +158,24 @@ class CopyEditReport:
         )
 
 
+_NOTE_CATEGORIES = frozenset({Category.ECHO, Category.RHYTHM, Category.WEAKENER})
+
+
 def partition_action_list(
     findings: list[Finding],
 ) -> tuple[list[Finding], list[Finding]]:
-    """Split copyedits from echo notes.
+    """Split copyedits from notes.
 
-    Echo has no repair. It must not sit in the list a program revises.
+    Echo, rhythm, and weakener notes have no repair, so they must not sit in
+    the list a program revises. A note with a checked rewrite attached
+    (``metadata.rewrite_checked``) goes to the action list.
     """
     action: list[Finding] = []
     may_look: list[Finding] = []
     for finding in findings:
-        if finding.category == Category.ECHO or finding.rule_id in {
+        if finding.metadata.get("rewrite_checked"):
+            action.append(finding)
+        elif finding.category in _NOTE_CATEGORIES or finding.rule_id in {
             "echo.local_repeat",
             "echo.phrase_dup",
         }:
