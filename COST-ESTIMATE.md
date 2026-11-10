@@ -35,6 +35,7 @@ Local CLI for the Ghost suite. Typical month is API usage only (LLM + TypeSafe w
 
 - Whole-novel analyze with TypeSafe + LLM on every chapter pushes the high band
 - Leaving engines off (defaults) keeps cost near zero
+- Checked rewrites (rhythm and weakener notes) add one LLM call per scene that has notes: usually 2 - 4 calls per chapter, capped at 8 rewrite targets. Each call sends one scene plus the targets, so roughly the same tokens as one garbled pass per chapter. Turn off with `rewrite_enabled: false` or `--no-llm`.
 
 ## Build & maintenance time
 

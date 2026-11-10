@@ -61,6 +61,9 @@ class GhostCopyeditorConfig(BaseModel):
     weak_tag_adverb_per_1000: float = 1.0
     weak_min_scene_words: int = 300
     style_guide: StyleGuide = StyleGuide()
+    rewrite_enabled: bool = True
+    rewrite_max_per_chapter: int = 8
+    rewrite_length_band: float = 0.4
     skip_rules: list[str] = []
 
     @classmethod
@@ -177,6 +180,12 @@ class GhostCopyeditorConfig(BaseModel):
             "# Style guide: banned phrases, pet words {word: per-chapter limit},",
             "# house spellings {wrong: right}",
             f"style_guide: {_fmt(self.style_guide.model_dump())}",
+            "",
+            "# Checked rewrites for rhythm/weakener notes (needs the LLM engine)",
+            f"rewrite_enabled: {_fmt(self.rewrite_enabled)}",
+            f"rewrite_max_per_chapter: {_fmt(self.rewrite_max_per_chapter)}",
+            "# Rewrite word count must stay within this share of the original",
+            f"rewrite_length_band: {_fmt(self.rewrite_length_band)}",
             "",
             "# Drop findings whose rule id starts with any of these (e.g. echo.)",
             f"skip_rules: {_fmt(self.skip_rules)}",

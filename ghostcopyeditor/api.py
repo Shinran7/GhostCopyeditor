@@ -60,6 +60,7 @@ async def check_chapter_async(
     typesafe_client: Any | None = None,
     story_dir: str | Path | None = None,
     skip_rules: tuple[str, ...] | list[str] = (),
+    rewrites: bool = False,
 ) -> ChapterCheck:
     """Async form of :func:`check_chapter`."""
     from ghostcopyeditor.canon import load_cast
@@ -70,7 +71,10 @@ async def check_chapter_async(
 
     base = config or GhostCopyeditorConfig()
     cfg = base.model_copy(
-        update={"skip_rules": [*base.skip_rules, *skip_rules]}
+        update={
+            "skip_rules": [*base.skip_rules, *skip_rules],
+            "rewrite_enabled": rewrites,
+        }
     )
     chapter = Chapter(
         title="",
@@ -112,11 +116,13 @@ def check_chapter(
     typesafe_client: Any | None = None,
     story_dir: str | Path | None = None,
     skip_rules: tuple[str, ...] | list[str] = (),
+    rewrites: bool = False,
 ) -> ChapterCheck:
     """Check one chapter. Safe to call from sync code or inside a running loop.
 
     ``skip_rules`` drops findings whose ``rule_id`` starts with any entry, so a
-    caller can say which problem types it already handles.
+    caller can say which problem types it already handles. ``rewrites=True``
+    (with ``llm``) attaches checked rewrites to rhythm and weakener notes.
     """
     coro_args: dict[str, Any] = {
         "chapter_number": chapter_number,
@@ -126,6 +132,7 @@ def check_chapter(
         "typesafe_client": typesafe_client,
         "story_dir": story_dir,
         "skip_rules": skip_rules,
+        "rewrites": rewrites,
     }
     try:
         asyncio.get_running_loop()

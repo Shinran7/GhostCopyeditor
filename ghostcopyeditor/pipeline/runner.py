@@ -150,6 +150,12 @@ async def run_chapter_pipeline(
             budget=per_hit_budget,
         )
     findings = drop_brute_echo(findings)
+    if llm_enabled and llm is not None and cfg.rewrite_enabled:
+        from ghostcopyeditor.llm_engine.rewrite import run_checked_rewrites
+
+        findings = await run_checked_rewrites(
+            chapter, findings, llm, cfg, lexicon=book, cast=cast
+        )
     findings = apply_cast(findings, cast)
     findings.extend(chapter_pronoun_findings(chapter, cast))
     findings = drop_lexicon_conflicts(findings, book)
