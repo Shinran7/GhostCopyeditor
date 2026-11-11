@@ -1,0 +1,19 @@
+{
+  "bucket": "1-confirmed-bugs-to-fix",
+  "count": 1,
+  "auditCommit": "94f7f42",
+  "triageDir": ".tmp/audit-triage/2026-11-11-ghostcopyeditor",
+  "findings": [
+    {
+      "findingId": "67223a7c2e659f3f",
+      "severity": "P2",
+      "filePath": "ghostcopyeditor/pipeline/runner.py",
+      "line": 145,
+      "category": "Skipped Rules Still Trigger Rewrites",
+      "verdict": "confirmed-bug",
+      "bucket": "fix",
+      "evidence": "runner.py:164-166 runs run_passage_rewrites on findings before drop_skipped_rules at runner.py:172. _units (rewrite.py:139-145) picks rhythm/weakener/hollow triggers regardless of skip_rules, and the emitted rule_id 'rewrite.passage' (rewrite.py:377) is not dropped. So skip_rules=['rhythm'] with rewrites=True still costs LLM calls and returns rewrites for skipped notes.",
+      "message": "ghostcopyeditor/pipeline/runner.py:145\u2013159 \u2014 Callers using skip_rules can still receive rewrites triggered by skipped findings. Failure: a skipped rhythm, weakener, or hollow note can cause a rewrite before the note is removed."
+    }
+  ]
+}

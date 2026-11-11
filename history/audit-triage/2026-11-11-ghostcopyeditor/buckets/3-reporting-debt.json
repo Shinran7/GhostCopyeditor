@@ -1,0 +1,162 @@
+{
+  "bucket": "3-reporting-debt",
+  "count": 14,
+  "auditCommit": "94f7f42",
+  "triageDir": ".tmp/audit-triage/2026-11-11-ghostcopyeditor",
+  "findings": [
+    {
+      "findingId": "05732cf00d70f656",
+      "severity": "P3",
+      "filePath": "ghostcopyeditor/models/report.py",
+      "line": 178,
+      "category": "Inconsistent Note Validation",
+      "verdict": "false-positive",
+      "bucket": "wontfix",
+      "evidence": "report.py:161-186 sends every finding in the ECHO/RHYTHM/WEAKENER/HOLLOW categories to may_look via _NOTE_CATEGORIES; the rule_id set only adds echo ids. There is no validator in report.py, and rhythm/weakener/hollow notes do not leak into the action list.",
+      "message": "ghostcopyeditor/models/report.py:178\u2013183 \u2014 Systems relying on the action-list contract can receive note findings in findings without validation catching them. Failure: rhythm, weakener, hollow, and non-listed echo notes can evade the validator\u2019s checks."
+    },
+    {
+      "findingId": "2646f0f48dd9b54b",
+      "severity": "P3",
+      "filePath": "ghostcopyeditor/report/json_export.py",
+      "line": 148,
+      "category": "python-exception",
+      "verdict": "false-positive",
+      "bucket": "wontfix",
+      "evidence": "json_export.py:148-154: the except Exception handler rolls back and then re-raises with a bare raise at line 154, so nothing is swallowed.",
+      "message": "`except Exception` catches nearly all exceptions. The handler body does not re-raise, so errors are silently swallowed. Catch a narrower type or re-raise the exception."
+    },
+    {
+      "findingId": "4f94ee0f697fca95",
+      "severity": "P2",
+      "filePath": "ghostcopyeditor/typesafe/missing_predicate_review.py",
+      "line": 84,
+      "category": "In-Place Finding Mutation",
+      "verdict": "speculative",
+      "bucket": "wontfix",
+      "evidence": "missing_predicate_review.py:84,110-116 mutates finding.metadata/severity in place, but the only caller (runner.py:149) uses findings it just built and keeps the returned list; no repo path reuses or discards a reviewed result.",
+      "message": "ghostcopyeditor/typesafe/missing_predicate_review.py:84 \u2014 Shared finding mutation. Callers reusing a finding can see its severity and metadata changed by a review run, including one whose results are later discarded."
+    },
+    {
+      "findingId": "568946a8561c8cc7",
+      "severity": "P1",
+      "filePath": "ghostcopyeditor/checkers/anachronism.py",
+      "line": 66,
+      "category": "Overbroad Setting Suppression",
+      "verdict": "overstated",
+      "bucket": "wontfix",
+      "evidence": "anachronism.py:75 sets one chapter-wide earthish flag from _EARTH_SETTING_CUES and line 86-88 skips every hit by design ('Intentional Earth POV'); the checker is a report-only SUGGESTION, so chapter-level suppression is a coarse heuristic, not a P1 failure.",
+      "message": "ghostcopyeditor/checkers/anachronism.py:70 \u2014 Science-fiction writers can miss anachronisms when an Earth cue appears anywhere in a chapter. Failure: one cue suppresses every matching term, including in unrelated off-world narration."
+    },
+    {
+      "findingId": "6c8ea8a355985c23",
+      "severity": "P1",
+      "filePath": "ghostcopyeditor/report/json_export.py",
+      "line": 139,
+      "category": "Unsafe Rollback",
+      "verdict": "overstated",
+      "bucket": "wontfix",
+      "evidence": "json_export.py:139-154: rollback re-writes saved text and re-raises. A rollback write can only fail if the disk fails again right after the first failure, and there are at most two paths (canonical plus -o). Not all-or-nothing in theory, negligible in practice.",
+      "message": "ghostcopyeditor/report/json_export.py:139\u2013154 \u2014 Callers relying on all-or-nothing report writes can lose or corrupt reports when a write fails. Failure: rollback can itself fail, leaving files truncated or unrestored."
+    },
+    {
+      "findingId": "834e15331c12017c",
+      "severity": "P1",
+      "filePath": "ghostcopyeditor/llm_engine/hollow.py",
+      "line": 118,
+      "category": "Overbroad Finding Span",
+      "verdict": "overstated",
+      "bucket": "wontfix",
+      "evidence": "hollow.py:118-121 deliberately falls back to the candidate sentence span when the LLM's phrase is not found; the finding is still emitted with sentence metadata (lines 135-140). The broader span is a reasonable fallback, not a P1 defect.",
+      "message": "ghostcopyeditor/llm_engine/hollow.py:118 \u2014 Missing phrase match expands the finding to the whole sentence. Authors lose the specific hollow-image span and receive an overbroad finding."
+    },
+    {
+      "findingId": "85ba851eafcfa01f",
+      "severity": "P2",
+      "filePath": "ghostcopyeditor/typesafe/per_hit_budget.py",
+      "line": 1,
+      "category": "Budget Not Enforced Across Callers",
+      "verdict": "speculative",
+      "bucket": "wontfix",
+      "evidence": "The only production caller (runner.py:136,146,156) creates one PerHitAskBudget per chapter and passes it to both reviews; budget=None or separate instances only arise from hypothetical external callers.",
+      "message": "ghostcopyeditor/typesafe/per_hit_budget.py:1\u201325 \u2014 The ask ceiling depends on callers sharing one budget instance. Users can exceed the intended total when reviews receive no budget or separate budgets."
+    },
+    {
+      "findingId": "8fe79c613180e9d0",
+      "severity": "P1",
+      "filePath": "ghostcopyeditor/nlp/spacy_runtime.py",
+      "line": 21,
+      "category": "Concurrent Initialization Race",
+      "verdict": "speculative",
+      "bucket": "wontfix",
+      "evidence": "spacy_runtime.py:21-34 has no lock, but nothing in the repo calls get_nlp concurrently: the only thread use is api.py:153 (one worker per call), and the pipeline is single-threaded async. A duplicate load needs an external multithreaded host and is transient anyway.",
+      "message": "ghostcopyeditor/nlp/spacy_runtime.py:21 \u2014 Concurrent first requests can load duplicate spaCy pipelines. Failure: workers temporarily consume duplicate model memory and CPU, potentially exhausting resources."
+    },
+    {
+      "findingId": "941d81ebae1838d4",
+      "severity": "P1",
+      "filePath": "ghostcopyeditor/pipeline/positions.py",
+      "line": 36,
+      "category": "Incorrect Position Metadata",
+      "verdict": "overstated",
+      "bucket": "wontfix",
+      "evidence": "positions.py:30-35 falls back to sentences[first].end only when char_end-1 lies outside any prose sentence (sentences.py:118-124), such as a gap or non-prose. Using the starting sentence's end is a deliberate approximation that still yields a valid sentence span.",
+      "message": "ghostcopyeditor/pipeline/positions.py:36 \u2014 Callers and downstream consumers can receive an incorrect sentence_end when a finding\u2019s end offset is outside indexed sentences. Failure: position metadata may point to the first sentence rather than the finding\u2019s actual end."
+    },
+    {
+      "findingId": "a13b0575be8d439c",
+      "severity": "P2",
+      "filePath": "ghostcopyeditor/llm_engine/hollow.py",
+      "line": 95,
+      "category": "Missing LLM Timeout",
+      "verdict": "overstated",
+      "bucket": "wontfix",
+      "evidence": "hollow.py:108 awaits llm.ainvoke with no wait_for; timeouts are the caller-supplied LangChain client's job (its own request timeout), and errors are caught at lines 109-111. This is a hardening niggle, not a blocking defect.",
+      "message": "ghostcopyeditor/llm_engine/hollow.py:95 \u2014 The hollow-judge call has no local timeout or cancellation handling. Callers can remain blocked waiting for the LLM response."
+    },
+    {
+      "findingId": "aa5b468eafac7727",
+      "severity": "P2",
+      "filePath": "ghostcopyeditor/llm_engine/rewrite.py",
+      "line": 203,
+      "category": "Misaligned Rewrite Validation Offsets",
+      "verdict": "false-positive",
+      "bucket": "wontfix",
+      "evidence": "rewrite.py:255 bounds the 'after' range with unit.start+len(edit), using the same stripped edit spliced in at line 253; 'before' is compared on the original unit.start..unit.end (line 256), and both runs use _strict_cfg (line 413). No stale offset.",
+      "message": "ghostcopyeditor/llm_engine/rewrite.py:254 \u2014 Stale offset range. Authors can have a valid rewrite falsely rejected because deterministic findings after a length-changing edit are compared using the original passage end offset."
+    },
+    {
+      "findingId": "afec8aa1a5bf7639",
+      "severity": "P3",
+      "filePath": "ghostcopyeditor/checkers/echo.py",
+      "line": 326,
+      "category": "Phrase Matching Crosses Skipped Regions",
+      "verdict": "overstated",
+      "bucket": "wontfix",
+      "evidence": "echo.py:329-335 drops skipped tokens and joins the rest of a blank-line paragraph, but non_prose spans (headings, fences, scene breaks per regions.py:80-81) rarely sit inside one paragraph with prose on both sides, and the gap must also be within max_gap. A rare SUGGESTION-level false positive.",
+      "message": "ghostcopyeditor/checkers/echo.py:326\u2013343 \u2014 Writers can receive false phrase-stutter findings when skipped non-prose separates repeated phrases. Failure: matching treats the remaining paragraph tokens as one sequence."
+    },
+    {
+      "findingId": "d72d3f5dfe114ca5",
+      "severity": "P1",
+      "filePath": "ghostcopyeditor/report/json_export.py",
+      "line": 139,
+      "category": "Concurrent Rollback Overwrites Updates",
+      "verdict": "duplicate",
+      "bucket": "wontfix",
+      "evidence": "Same anchor and message as 6c8ea8a355985c23 (json_export.py:139-154). Nothing in the repo writes the same report path concurrently, so the 'concurrent overwrite' category has no code path either.",
+      "message": "ghostcopyeditor/report/json_export.py:139\u2013154 \u2014 Callers relying on all-or-nothing report writes can lose or corrupt reports when a write fails. Failure: rollback can itself fail, leaving files truncated or unrestored."
+    },
+    {
+      "findingId": "df1be2941455414e",
+      "severity": "P3",
+      "filePath": "ghostcopyeditor/checkers/echo.py",
+      "line": 220,
+      "category": "Incorrect Finding Excerpt",
+      "verdict": "overstated",
+      "bucket": "wontfix",
+      "evidence": "echo.py:343 uses the whole paragraph as the excerpt while the offsets (line 354) cover the matched span; the message names the phrase (line 350) and the finding is applyable=False, so there is only a cosmetic excerpt mismatch.",
+      "message": "ghostcopyeditor/checkers/echo.py:220 \u2014 Users reviewing phrase-duplication findings see the whole paragraph as the excerpt. Failure: the excerpt does not identify the matched text represented by the finding\u2019s character offsets."
+    }
+  ]
+}

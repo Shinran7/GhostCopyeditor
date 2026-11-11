@@ -1,0 +1,19 @@
+{
+  "bucket": "2-likely-bugs",
+  "count": 1,
+  "auditCommit": "94f7f42",
+  "triageDir": ".tmp/audit-triage/2026-11-11-ghostcopyeditor",
+  "findings": [
+    {
+      "findingId": "649fdcc3a97cb50a",
+      "severity": "P1",
+      "filePath": "ghostcopyeditor/api.py",
+      "line": 154,
+      "category": "Async Event-Loop Incompatibility",
+      "verdict": "likely-bug",
+      "bucket": "fix",
+      "evidence": "api.py:149-157 runs check_chapter_async under a fresh asyncio.run (worker thread when a loop is running) on every call, so caller-supplied async llm/typesafe_client/role_llms reused across calls or created on the caller's loop get driven on a foreign or closed loop; failures then surface as swallowed errors (hollow.py:107-111 returns []). Docstring at api.py:129 promises loop safety. P1 is high; check_chapter_async is the escape hatch.",
+      "message": "ghostcopyeditor/api.py:154\u2013158 \u2014 Async callers passing loop-bound clients can fail when check_chapter runs their work on a new event loop. Failure: client requests may raise a different-loop error or hang."
+    }
+  ]
+}

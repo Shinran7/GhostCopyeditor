@@ -1,0 +1,16 @@
+{
+  "triageId": "2026-11-11-ghostcopyeditor",
+  "auditCommit": "94f7f42",
+  "ledgerSource": "self-labels",
+  "total": 16,
+  "markdownParsed": 15,
+  "withMessage": 16,
+  "ruled": 0,
+  "pending": 16,
+  "batches": 1,
+  "byVerdict": {
+    "pending": 16
+  },
+  "scopedToNewMarkdown": true,
+  "outOfScopeDeferredNoMarkdown": 4
+}

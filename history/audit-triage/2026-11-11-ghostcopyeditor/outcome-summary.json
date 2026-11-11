@@ -1,0 +1,14 @@
+{
+  "bugs": 2,
+  "reporting": 14,
+  "wontfix": 14,
+  "pending": 0,
+  "verdicts": {
+    "false-positive": 3,
+    "speculative": 3,
+    "overstated": 7,
+    "likely-bug": 1,
+    "confirmed-bug": 1,
+    "duplicate": 1
+  }
+}
