@@ -126,7 +126,14 @@ def check_chapter(
     rewrites: bool = False,
     role_llms: Any | None = None,
 ) -> ChapterCheck:
-    """Check one chapter. Safe to call from sync code or inside a running loop.
+    """Check one chapter from sync code.
+
+    Each call runs on its own new event loop (in a worker thread when a loop
+    is already running, which blocks that loop until the check is done).
+    Async clients (``llm``, ``typesafe_client``, ``role_llms``) that are bound
+    to another loop, or reused across calls, may fail there; LLM checks fail
+    soft, so their notes go missing. Async callers should await
+    ``check_chapter_async`` with clients made on their own loop.
 
     ``skip_rules`` drops findings whose ``rule_id`` starts with any entry, so a
     caller can say which problem types it already handles. ``rewrites=True``

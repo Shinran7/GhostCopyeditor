@@ -274,3 +274,16 @@ def test_figurative_loss_is_a_wording_note() -> None:
 def test_rejected_edit_is_kept_for_review() -> None:
     out = _run(_Stub(_draft()), _Stub(json.dumps({**KEPT, "added": ["a lamp"]})))
     assert any(f.metadata.get("rewrite_rejected_edit") == GOOD for f in out)
+
+
+def test_skipped_rules_trigger_no_rewrite() -> None:
+    cfg = GhostCopyeditorConfig(hollow_enabled=False, skip_rules=["rhythm.", "weak."])
+    writer = _Stub(_draft())
+    roles = SimpleNamespace(rewrite_writer=writer, rewrite_checker=_Stub(json.dumps(KEPT)))
+    out = asyncio.run(
+        run_chapter_pipeline(
+            _chapter(), cfg=cfg, llm=_Stub("[]"), llm_enabled=True, role_llms=roles
+        )
+    )
+    assert not _passages(out)
+    assert writer.calls == []

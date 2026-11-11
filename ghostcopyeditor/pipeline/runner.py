@@ -156,6 +156,8 @@ async def run_chapter_pipeline(
             budget=per_hit_budget,
         )
     findings = drop_brute_echo(findings)
+    # Drop skipped rules before rewrites, so a skipped note never triggers one.
+    findings = drop_skipped_rules(findings, cfg.skip_rules)
     writer = getattr(role_llms, "rewrite_writer", None)
     checker = getattr(role_llms, "rewrite_checker", None)
     if llm_enabled and cfg.rewrite_enabled and writer is not None and checker is not None:
