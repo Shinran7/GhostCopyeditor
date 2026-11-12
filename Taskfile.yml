@@ -8,9 +8,6 @@ version: '3'
 # Framework source uses root task check. Do not add a root check alias.
 
 includes:
-  deft:
-    taskfile: ./.deft/core/Taskfile.yml
-    optional: true
 
 tasks:
   nlp-model:
