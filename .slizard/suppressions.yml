@@ -56,3 +56,7 @@ suppressions:
   reason: 'audit-triage 2026-11-11-ghostcopyeditor bucket3 (overstated): ghostcopyeditor/checkers/echo.py:220 — echo.py:343 uses the whole paragraph as the excerpt while the offsets (line 354) cover the matched span; the message names the phrase (line 350) and the finding is applyable=False, so there is only a cosmetic excerpt mismatch.'
   addedBy: audit-triage
   addedAt: '2026-11-11'
+- findingId: 66d346802aa4b483
+  reason: 'audit-triage 2026-11-12-ghostcopyeditor bucket5 (wontfix): ghostcopyeditor/api.py:129 — ghostcopyeditor/api.py:129-136 documents this contract: each sync call runs on a new loop, async clients bound to another loop may fail, LLM checks fail soft, and async callers should use check_chapter_async. The only consumer, Autonomicon agents/gce_check.py:141-149, follows it: the sync check_chapter path passes no LLM clients, and the rewrites path builds role_llms inside its own asyncio.run loop and awaits check_chapter_async.'
+  addedBy: audit-triage
+  addedAt: '2026-11-12'
