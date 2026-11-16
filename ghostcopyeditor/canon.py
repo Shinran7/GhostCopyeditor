@@ -247,6 +247,38 @@ _PROSE_FIELDS = (
 _LIST_FIELDS = ("history", "voice_wildcards")
 
 
+_NOUN_WORDS: dict[int, str] = {
+    _HE_FAMILY: r"(?:girl|woman|lady|lass)",
+    _SHE_FAMILY: r"(?:boy|man|lad)",
+}
+_DET = r"\b(?:the|a|an|that|this)"
+_ADJ = r"(?:[A-Za-z'-]+\s+){0,2}"
+_LINK = r"(?:is|was|became|seemed|looked\s+like|remained)"
+
+
+def _tied_nouns(sentence: str, member: CastMember) -> list[str]:
+    """Gendered nouns that describe *member* in this sentence, not someone near them.
+
+    Only apposition ("Garrick, the woman" / "the woman, Garrick") and a link
+    verb ("Garrick was a woman") count. "Garrick looked toward the woman"
+    names two people, so it is not a clash.
+    """
+    noun = _NOUN_WORDS.get(member.family or -1)
+    if noun is None:
+        return []
+    found: list[str] = []
+    for token in member.tokens:
+        name = re.escape(token)
+        patterns = (
+            rf"\b{name}(?:'s)?\s*,\s*{_DET}\s+{_ADJ}\b({noun})\b",
+            rf"\b{name}\s+{_LINK}\s+{_DET}\s+{_ADJ}\b({noun})\b",
+            rf"\b{_DET}\s+{_ADJ}\b({noun})\s*,?\s+{name}\b",
+        )
+        for pattern in patterns:
+            found.extend(m.group(1) for m in re.finditer(pattern, sentence, re.IGNORECASE))
+    return found
+
+
 def _clash_words(text: str, family: int | None) -> list[str]:
     """Pronouns and gendered nouns that contradict *family*."""
     if family not in _PRONOUN_AGAINST:
@@ -343,10 +375,9 @@ def chapter_pronoun_findings(
         if not owners:
             continue
         for member in owners:
-            # Pronouns in a sentence often belong to someone else. A gendered
-            # noun ("the girl" beside a he/him name) is the oversight.
-            pattern = _NOUN_AGAINST.get(member.family or -1)
-            words = [] if pattern is None else [m.group(0) for m in pattern.finditer(sentence)]
+            # Pronouns and nouns in a sentence often belong to someone else.
+            # Flag a gendered noun only when it is tied to this name.
+            words = _tied_nouns(sentence, member)
             if not words:
                 continue
             key = (member.name, sentence)

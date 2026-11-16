@@ -139,7 +139,7 @@ def test_character_file_and_chapter_mixes_are_findings(tmp_path: Path) -> None:
 
     chapter = Chapter(
         "Twelve",
-        "Ilya sat with his bread while Ysolde crossed to her, where the girl waited.\n",
+        "Ilya, the girl from the mill, sat with his bread.\n",
         12,
         story / "chapters" / "chapter-012.md",
     )
@@ -157,13 +157,24 @@ def test_character_file_and_chapter_mixes_are_findings(tmp_path: Path) -> None:
     assert chapter_pronoun_findings(quiet, load_cast(story)) == []
     boy = Chapter(
         "Two",
-        "Ysolde sent the boy ahead with the mule.\n",
+        "Ysolde was a quiet boy then.\n",
         2,
         story / "chapters" / "chapter-002.md",
     )
     boy_hits = chapter_pronoun_findings(boy, load_cast(story))
     assert len(boy_hits) == 1
     assert boy_hits[0].metadata["cast_name"] == "Ysolde Kestrel"
+    before = Chapter("Two", "The old man, Ysolde, waited.\n", 2, story / "chapters" / "c.md")
+    assert len(chapter_pronoun_findings(before, load_cast(story))) == 1
+    # A gendered noun near a name usually means a second person.
+    for crowd in (
+        "Ysolde sent the boy ahead with the mule.\n",
+        "Ilya looked toward the woman in the safety vest.\n",
+        "Ysolde arrived with the returned man still leaning on her.\n",
+        "Ilya urged the young woman forward.\n",
+    ):
+        other = Chapter("Two", crowd, 2, story / "chapters" / "c.md")
+        assert chapter_pronoun_findings(other, load_cast(story)) == [], crowd
 
 
 def test_it_to_its_is_not_a_cast_guess(tmp_path: Path) -> None:
